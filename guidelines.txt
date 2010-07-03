@@ -45,7 +45,8 @@ Tipos de evento:
 
 
 TentarEnviar():
+-> (outra implementação possível: colocar o "if não bloqueado" aqui dentro)
 -> Se o meio estiver ocioso:
   -> Agenda o InicioDeEnvio para "agora" ou "após 9.6us"
 -> Se o meio estiver ocupado:
-  -> "Não faço nada" (o tratamento será feito no FimDoRecebimento)
+  -> "Não faço nada" (o tratamento será feito no FimDeRecebimento)

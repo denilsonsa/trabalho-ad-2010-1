@@ -1,0 +1,51 @@
+* Vamos implementar um hub.
+
+Tipos de evento:
+
+* ChegouMensagemParaSerEnviada
+-> Quebra uma mensagem em diversos quadros
+-> SE a fila vazia, então enfileira e chama TentarEnviar()
+-> SE a fila não vazia (ou seja, está enviando alguma coisa), então apenas enfileira
+
+* InicioDeEnvio
+-> Agendar FimDeEnvio (para a máquina atual)
+-> Agendar InicioDeRecebimento no hub
+-> Marcar que estou enviando (e salvar ponteiros relevantes)
+   -> Posso apenas salvar um ponteiro para o FimDeEnvio, só isso é bastante para tratar o caso de sinal de Jam.
+
+* FimDeEnvio
+-> Marcar que não estou mais enviando
+-> Agendar FimDeRecebimento no hub
+
+* InicioDeRecebimento (no hub)
+-> Agendar InicioDeRecebimento nas 4 máquinas
+
+* FimDeRecebimento (no hub)
+-> Agendar FimDeRecebimento nas 4 máquinas
+
+* InicioDeRecebimento
+-> Incrementar contador de uso do meio
+-> Se contador >= 2 && estou enviando
+   -> Tratar Jam
+      -> Incrementar contador de tentativas
+      -> Descartar antigo FimDeEnvio
+      -> Agendar novo FimDeEnvio
+      -> Setar flag "tratando Jam" (necessário?)
+      -> Setar flag bloqueando envios
+      -> Rodar o backoff exponencial, e agendar TentativaDeRetransmissao para esse tempo
+
+* TentativaDeRetransmissao
+-> Setar flag liberando envios
+-> TentarEnviar()
+   -> Este TentarEnviar() vai "automaticamente" agendar uma nova retransmissão após 9.6us ou para a próxima vez que o meio ficar livre.
+
+* FimDeRecebimento
+-> Decrementar contador de uso do meio
+-> Se fila não vazia && envio não está bloqueado, então TentarEnviar()
+
+
+TentarEnviar():
+-> Se o meio estiver ocioso:
+  -> Agenda o InicioDeEnvio para "agora" ou "após 9.6us"
+-> Se o meio estiver ocupado:
+  -> "Não faço nada" (o tratamento será feito no FimDoRecebimento)

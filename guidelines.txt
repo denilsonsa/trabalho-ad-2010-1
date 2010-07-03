@@ -1,8 +1,7 @@
-* Vamos implementar um hub.
-
 Tipos de evento:
 
 * ChegouMensagemParaSerEnviada
+-> Agenda o próximo ChegouMensagemParaSerEnviada
 -> Quebra uma mensagem em diversos quadros
 -> SE a fila vazia, então enfileira e chama TentarEnviar()
 -> SE a fila não vazia (ou seja, está enviando alguma coisa), então apenas enfileira

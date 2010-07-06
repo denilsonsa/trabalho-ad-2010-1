@@ -12,25 +12,25 @@ def main():
     maquinas = [
         Host(
             hostname = "maq1",
-            dist = 100,
+            distancia = 100,
             chegada = Exponencial(20),
             num_quadros = 10
         ),
         Host(
             hostname = "maq2",
-            dist = 80,
+            distancia = 80,
             chegada = Deterministica(20),
             num_quadros = 10
         ),
         Host(
             hostname = "maq3",
-            dist = 60,
+            distancia = 60,
             chegada = None,
             num_quadros = 10
         ),
         Host(
             hostname = "maq4",
-            dist = 40,
+            distancia = 40,
             chegada = None,
             num_quadros = 10
         ),

@@ -48,7 +48,7 @@ class Mensagem(object):
 class Host(object):
     """ """
 
-    def __init__(self, hostname, dist, chegada, num_quadros):
+    def __init__(self, hostname, distancia, chegada, num_quadros):
         """Parâmetros:
         hostname = Nome da máquina (ignorado pelo simulador)
         dist = Distância deste host ao hub (medida em metros)
@@ -56,7 +56,7 @@ class Host(object):
         num_quadros = Distribuição do número de quadros para cada mensagem"""
 
         self.hostname = hostname
-        self.dist = dist #TODO: converter esta distância em tempo!
+        self.distancia = distancia #TODO: converter esta distância em tempo!
         self.chegada = chegada
         #self.num_quadros = num_quadros
         self.fila = [] #fila de mensagens

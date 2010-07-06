@@ -11,6 +11,7 @@ Tipos de evento:
 -> Agendar InicioDeRecebimento no hub
 -> Marcar que estou enviando (e salvar ponteiros relevantes)
    -> Posso apenas salvar um ponteiro para o FimDeEnvio, só isso é bastante para tratar o caso de sinal de Jam.
+-> ChecarJam()
 
 * FimDeEnvio
 -> Marcar que não estou mais enviando
@@ -23,8 +24,11 @@ Tipos de evento:
 -> Agendar FimDeRecebimento nas 4 máquinas
 
 * InicioDeRecebimento
--> Incrementar contador de uso do meio
--> Se contador >= 2 && estou enviando
+-> Incrementar contador de uso do meio se a estação for diferente da própria
+-> ChecarJam() //Se contador >= 2 && estou enviando
+
+ChecarJam():
+-> Se estou enviando e estou recebendo algo de outra estação
    -> Tratar Jam
       -> Incrementar contador de tentativas
       -> Descartar antigo FimDeEnvio
@@ -39,7 +43,7 @@ Tipos de evento:
    -> Este TentarEnviar() vai "automaticamente" agendar uma nova retransmissão após 9.6us ou para a próxima vez que o meio ficar livre.
 
 * FimDeRecebimento
--> Decrementar contador de uso do meio
+-> Decrementar contador de uso do meio se a estação for diferente da própria
 -> Se fila não vazia && envio não está bloqueado, então TentarEnviar()
 
 
@@ -49,3 +53,14 @@ TentarEnviar():
   -> Agenda o InicioDeEnvio para "agora" ou "após 9.6us"
 -> Se o meio estiver ocupado:
   -> "Não faço nada" (o tratamento será feito no FimDeRecebimento)
+
+
+Máquina:
+-> Fila de mensagens
+-> prox_quadro (a ser transmitido, dentro da msg atual)
+-> numero de retransmissoes do quadro atual
+-> tempo do começo de envio do quadro atual
+-> tempo do começo de envio da mensagem atual
+
+Mensagem:
+-> num_quadros (total)

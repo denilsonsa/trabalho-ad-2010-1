@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 # vi:ts=4 sw=4 et
 
-
+import simulador
+reload(simulador)
 from simulador import *
 
 
@@ -13,35 +14,34 @@ def main():
             hostname = "maq1",
             dist = 100,
             chegada = Exponencial(20),
-            numquadros = 10
+            num_quadros = 10
         ),
         Host(
             hostname = "maq2",
             dist = 80,
             chegada = Deterministica(20),
-            numquadros = 10
+            num_quadros = 10
         ),
         Host(
             hostname = "maq3",
             dist = 60,
-            chegada = Offline(),
-            numquadros = 10
+            chegada = None,
+            num_quadros = 10
         ),
         Host(
             hostname = "maq4",
             dist = 40,
-            chegada = Offline(),
-            numquadros = 10
+            chegada = None,
+            num_quadros = 10
         ),
     ]
-    hub = Hub(
+    simulador = Simulador(    
         hosts = maquinas
     )
-    simulador = Simulador(
-        # hub = hub
-    )
-    print "Hello!"
 
+    print "Hello suckers! Gonna start simulatin'"
+    simulador.start()
+    simulador.run()
 
 if __name__ == "__main__":
     main()

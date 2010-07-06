@@ -11,7 +11,7 @@ class HeapDeEventos(list):
     """Implementação de uma fila com prioridades."""
 
     def adicionar(self, tempo, evento):
-        heapq.heappush(self, ())
+        heapq.heappush(self, (tempo, evento))
 
     def remover(self):
         """Retorna uma tupla (tempo, evento)"""
@@ -28,73 +28,101 @@ def Exponencial(intervalo):
 
 def Deterministica(valor):
     """Gerador deterministico de tempos ou número de quadros."""
-    return lambda: intervalo
+    return lambda: valor
 
 def Geometrica(probabilidade):
     """Gerador de distribuição geométrica."""
     return lambda: numpy.random.geometric(probabilidade)
 
-def Offline():
-    """Retorna sempre -1, que deve ser ignorado pelo simulador."""
-    # TODO: Talvez seja uma boa idéia subir uma exceção em vez de
-    # retornar -1. Ou então retornar None.
-    return lambda: -1
-
 
 ######################################################################
-# Equipamentos "virtuais" simulados
+# Coisas que encapsulam a interface do Host
+
+class Mensagem(object):
+    """ """
+
+    def __init__(self, num_quadros):
+        self.num_quadros = num_quadros
+    
 
 class Host(object):
     """ """
 
-    def __init__(self, hostname, dist, chegada, numquadros):
+    def __init__(self, hostname, dist, chegada, num_quadros):
         """Parâmetros:
         hostname = Nome da máquina (ignorado pelo simulador)
         dist = Distância deste host ao hub (medida em metros)
         chegada = Processo de chegada das mensagens a ser enviadas
-        numquadros = Distribuição do número de quadros para cada mensagem"""
+        num_quadros = Distribuição do número de quadros para cada mensagem"""
 
         self.hostname = hostname
         self.dist = dist #TODO: converter esta distância em tempo!
         self.chegada = chegada
-        #self.numquadros = numquadros
+        #self.num_quadros = num_quadros
+        self.fila = [] #fila de mensagens
+        self.proximo_quadro = -1
+        self.tentativas_de_tramissao = -1
+        self.tempo_comeco_envio_quadro = -1
+        self.tempo_comeco_envio_mensagem = -1
 
         # XXX: Cuidado! Não é tratado o caso do número de quadros ser
         # fracionário!
-        if callable(numquadros):
+        if callable(num_quadros):
             # Se o tipo de distribuição foi definido explicitamente:
-            self.numquadros = numquadros
+            self.num_quadros = num_quadros
         else:
             # Caso contrário, auto-detectar o tipo de distribuição através
             # do número passado
-            if numquadros < 1:
+            if num_quadros < 1:
                 # O número passado é uma probabilidade
-                self.numquadros = Geometrica(numquadros)
+                self.num_quadros = Geometrica(num_quadros)
             else:
                 # O número passado é uma quantidade constante
                 # (determinística) de quadros
-                self.numquadros = Deterministica(numquadros)
+                self.num_quadros = Deterministica(num_quadros)
 
+    def tentar_enviar(self):
+        print "Nem sequer tentei enviar... :D"
 
-
-class Hub(object):
-    """Hub que interconecta diferentes hosts. Sua única função é repetir o
-    sinal para todas as máquinas (inclusive para aquela que enviou o
-    sinal).
-    
-    Para funcionar, o simulador precisa ter um, e apenas um, hub."""
-
-    def __init__(self, hosts):
-        """Parâmetros:
-        hosts = Lista de máquinas conectadas ao hub."""
-        self.hosts = hosts
 
 
 ######################################################################
 # Eventos
 
-class NomeDoEventoAqui(object):
-    pass
+class Evento(object):
+    """Classe abstrata que represente um evento."""
+
+    def processar(self, simulador):
+        raise NotImplementedError()    
+
+        
+class ChegouMensagemParaSerEnviada(Evento):
+    """Classe que representa uma chegada de mensagem da camada superior."""
+
+    def __init__(self, maquina):
+        self.maquina = maquina
+        self.num_quadros = maquina.num_quadros()
+        
+
+    def processar(self, simulador):
+        print "Processando ChegadaDeMensagemParaSerEnviada em t=%f na maquina=%s" % (
+            simulador.tempo_agora, self.maquina.hostname )
+
+        #gera próximo evento
+        simulador.eventos.adicionar(
+            simulador.tempo_agora + self.maquina.chegada(),
+            ChegouMensagemParaSerEnviada(self.maquina)
+        )
+
+        fila_vazia = (len(self.maquina.fila) == 0)
+
+        #adiciona mensagem à fila de envio
+        self.maquina.fila.append(
+            Mensagem(self.num_quadros)
+        )
+
+        if fila_vazia:
+            self.maquina.tentar_enviar()
 
 
 ######################################################################
@@ -102,6 +130,28 @@ class NomeDoEventoAqui(object):
 class Simulador(object):
     """Classe principal que encapsula um simulador."""
 
-    def __init__(self):
+    def __init__(self, hosts):
+        """Parâmetros:
+        hosts = Lista de máquinas conectadas ao hub."""
+        self.hosts = hosts
         self.eventos = HeapDeEventos()
         self.tempo_agora = 0
+
+    def start(self):
+        """Inicializa o simulador, gerando os eventos iniciais"""
+        for maquina in self.hosts:
+            if callable(maquina.chegada):
+                self.eventos.adicionar(
+                    maquina.chegada(),
+                    ChegouMensagemParaSerEnviada(maquina)
+                )
+
+    def run(self):
+        """Executa uma rodada da simulação"""
+        for iteracao in xrange(100): #*** TODO: COLOCAR UM CRITERIO DE PARADA DECENTE
+            #retirar evento da fila
+            self.tempo_agora, evento = self.eventos.remover()
+
+            #processar evento
+            evento.processar(self)
+            

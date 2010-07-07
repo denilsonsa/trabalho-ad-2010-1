@@ -36,11 +36,12 @@ def main():
         ),
     ]
     simulador = Simulador(    
-        hosts = maquinas
+        hosts = maquinas,
+        tempo_minimo_ocioso = 9.6
     )
 
     print "Hello suckers! Gonna start simulatin'"
-    simulador.start()
+    simulador.start(0)
     simulador.run()
 
 if __name__ == "__main__":

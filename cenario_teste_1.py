@@ -13,14 +13,14 @@ def main():
         Host(
             hostname = "maq1",
             distancia = 100,
-            chegada = Exponencial(20),
-            num_quadros = 10
+            chegada = Exponencial(20 * 1000),
+            num_quadros = 2
         ),
         Host(
             hostname = "maq2",
             distancia = 80,
-            chegada = Deterministica(20),
-            num_quadros = 10
+            chegada = Deterministica(20 * 1000),
+            num_quadros = 5
         ),
         Host(
             hostname = "maq3",
@@ -37,10 +37,11 @@ def main():
     ]
     simulador = Simulador(    
         hosts = maquinas,
-        tempo_minimo_ocioso = 9.6
+        tempo_minimo_ocioso = 9.6,
+        tempo_transmissao_quadro = 800, #8000 bits/quadro / 10 Mbps = 800microseg/quadro
+        tempo_propagacao = 0.005 #5 microseg/km = 0.005 microseg/m
     )
 
-    print "Hello suckers! Gonna start simulatin'"
     simulador.start(0)
     simulador.run()
 

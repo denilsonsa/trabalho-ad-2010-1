@@ -37,6 +37,7 @@ ChecarJam():
       -> Setar flag bloqueando envios
       -> Rodar o backoff exponencial, e agendar TentativaDeRetransmissao para esse tempo
 
+OBS: Do jeito que tá ficando o simulador acho que não vai precisar desse evento. --Tinnus
 * TentativaDeRetransmissao
 -> Setar flag liberando envios
 -> TentarEnviar()

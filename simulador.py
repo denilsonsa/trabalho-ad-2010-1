@@ -7,6 +7,7 @@ import heapq
 import sys
 
 import matplotlib.pyplot as pyplot
+import math
 
 ######################################################################
 # Estruturas auxiliares: Heap de eventos e coleta de estatísticas
@@ -45,7 +46,7 @@ class Estatisticas(object):
         if len(self.amostras) != len(self.intervalos):
             pyplot.plot(self.amostras)
         else:
-            x = arange(1, self.num_amostras+1)
+            x = numpy.arange(1, self.num_amostras+1)
             pyplot.errorbar(x, self.amostras, yerr=self.intervalos)
 
         pyplot.title(titulo)
@@ -69,7 +70,7 @@ class Estatisticas(object):
 
     def intervalo_de_confianca(self):
         t_student_95 = 1.645
-        return 2 * t_student_95 * sqrt(self.variancia() / self.num_amostras)
+        return 2 * t_student_95 * math.sqrt(self.variancia() / self.num_amostras)
         
 
 
@@ -96,8 +97,8 @@ def Geometrica(probabilidade):
 class Mensagem(object):
     """ """
 
-    def __init__(self, cor, num_quadros):
-        self.cor = cor
+    def __init__(self, rodada, num_quadros):
+        self.rodada = rodada
         self.num_quadros = num_quadros
     
 
@@ -112,12 +113,13 @@ class Host(object):
         num_quadros = Distribuição do número de quadros para cada mensagem"""
 
         self.hostname = hostname
-        self.distancia = distancia #TODO: converter esta distância em tempo!
+        self.distancia = distancia
         self.chegada = chegada
         #self.num_quadros = num_quadros
         self.fila = [] #fila de mensagens
-        self.proximo_quadro = -1
-        self.tentativas_de_tramissao = -1
+        self.proximo_quadro = 0
+        self.tentativas_de_transmissao = 0
+        self.tempo_considerar_envio_quadro = -1
         self.tempo_comeco_envio_quadro = -1
         self.tempo_comeco_envio_mensagem = -1
         self.uso_do_meio = 0
@@ -141,6 +143,12 @@ class Host(object):
 
 
     def tentar_enviar(self, simulador):
+        print "tentar_enviar maquina=%s tentativas=%d" % (self.hostname, self.tentativas_de_transmissao)
+        if len(self.fila) == 0: return #nada a transmitir
+        if self.tentativas_de_transmissao != 0: return #ja estou transmitindo
+
+        self.tempo_considerar_envio_quadro = simulador.tempo_agora
+
         if self.uso_do_meio == 0:
             simulador.eventos.adicionar(
                 max(simulador.tempo_agora, self.tempo_comeco_ocioso + simulador.tempo_minimo_ocioso),
@@ -148,13 +156,26 @@ class Host(object):
             )
         #else: será tratado no FimDeRecebimento
 
+    def checar_jam(self):
+        pass
+
+
+class Hub(object):
+    """Classe que representa um Hub, só serve pra ter um nome e ajudar no Debug"""
+
+    def __init__(self):
+        self.hostname = "Hub"
+
+
+# valor especial que representa o hub no campo "maquina" dos eventos
+HUB = Hub() 
 
 
 ######################################################################
 # Eventos
 
 class Evento(object):
-    """Classe abstrata que represente um evento."""
+    """Classe abstrata que representa um evento."""
 
     def processar(self, simulador):
         raise NotImplementedError()    
@@ -163,35 +184,35 @@ class Evento(object):
 class ChegouMensagem(Evento):
     """Classe que representa uma chegada de mensagem da camada superior."""
 
-    def __init__(self, cor, maquina):
-        self.cor = cor
+    def __init__(self, rodada, maquina):
+        self.rodada = rodada
         self.maquina = maquina
         self.num_quadros = maquina.num_quadros()
         
-
     def processar(self, simulador):
         print "- Evento: ChegouMensagem com %d quadros em t=%f na maquina=%s" % (
             self.num_quadros, simulador.tempo_agora, self.maquina.hostname )
 
         #adiciona na estatistica (TEMP)
-        simulador.tempo_chegada.adicionar_amostra(simulador.tempo_agora)
-        simulador.tempo_chegada.adicionar_intervalo(simulador.tempo_chegada.intervalo_de_confianca())
+        #simulador.tempo_chegada.adicionar_amostra(simulador.tempo_agora)
+        #simulador.tempo_chegada.adicionar_intervalo(simulador.tempo_chegada.intervalo_de_confianca())
 
         #gera próximo evento
         simulador.eventos.adicionar(
             simulador.tempo_agora + self.maquina.chegada(),
-            ChegouMensagem(self.cor, self.maquina)
+            ChegouMensagem(self.rodada, self.maquina)
         )
 
         fila_vazia = (len(self.maquina.fila) == 0)
 
         #adiciona mensagem à fila de envio
         self.maquina.fila.append(
-            Mensagem(self.cor, self.num_quadros)
+            Mensagem(self.rodada, self.num_quadros)
         )
 
         if fila_vazia:
             self.maquina.tentar_enviar(simulador)
+
 
 class InicioDeEnvio(Evento):
     """ """
@@ -200,20 +221,134 @@ class InicioDeEnvio(Evento):
         self.maquina = maquina
 
     def processar(self, simulador):
-        print "- Evento: InicioDeEnvio :D t=%f maquina=%s" % (
-            simulador.tempo_agora, self.maquina.hostname )
+        print "- Evento: InicioDeEnvio em t=%f maquina=%s quadro=%d" % (
+            simulador.tempo_agora, self.maquina.hostname, self.maquina.proximo_quadro )
+
+        #verifica mensagem na fila de envio
+        #(ela só será removida de fato no FimDeEnvio com sucesso)
+        mensagem = self.maquina.fila[0]
         
+        #gera evento de FimDeEnvio e o salva
+        fim_de_envio = FimDeEnvio(mensagem.rodada, self.maquina)
+        simulador.eventos.adicionar(
+            simulador.tempo_agora + simulador.tempo_transmissao_quadro,
+            fim_de_envio
+        )
+
+        #gera evento de InicioDeRecebimento no hub
+        simulador.eventos.adicionar(
+            simulador.tempo_agora + (self.maquina.distancia * simulador.tempo_propagacao),
+            InicioDeRecebimento(mensagem.rodada, HUB, self.maquina)
+        )
+
+        #atualiza estado da máquina
+        self.maquina.tentativas_de_transmissao += 1
+        self.maquina.tempo_comeco_envio_quadro = simulador.tempo_agora
+        self.maquina.fim_de_envio = fim_de_envio
+
+        self.maquina.checar_jam()
+
+
+class FimDeEnvio(Evento):
+    """ """
+
+    def __init__(self, rodada, maquina):
+        self.rodada = rodada
+        self.maquina = maquina
+        self.cancelado = 0
+
+    def processar(self, simulador):
+        if self.cancelado: return
+
+        print "- Evento: FimDeEnvio em t=%f na maquina=%s" % (
+            simulador.tempo_agora, self.maquina.hostname )
+
+        #coleta estatisticas (se rodada valida)
+        if self.rodada == simulador.rodada_atual:
+            simulador.tap_rodada.adicionar_amostra(self.maquina.tempo_comeco_envio_quadro - self.maquina.tempo_considerar_envio_quadro)
+
+        #gera evento de FimDeRecebimento no hub
+        simulador.eventos.adicionar(
+            simulador.tempo_agora + (self.maquina.distancia * simulador.tempo_propagacao),
+            FimDeRecebimento(self.rodada, HUB, self.maquina)
+        )
+
+        #reiniciar estado de envio de quadro da máquina
+        self.maquina.tentativas_de_transmissao = 0
+        
+        #incrementar proximo quadro a enviar
+        self.maquina.proximo_quadro += 1
+        if self.maquina.proximo_quadro == self.maquina.fila[0].num_quadros:
+            #mensagem enviada por completo; retira-la da fila
+            self.maquina.fila.pop(0)
+
+        #tentar enviar próximo quadro (agendar para daqui a 9.6us)
+        self.maquina.tentar_enviar(simulador)
+
+
+class InicioDeRecebimento(Evento):
+    """ """
+
+    def __init__(self, rodada, maquina, maquina_origem):
+        self.rodada = rodada
+        self.maquina = maquina
+        self.maquina_origem = maquina_origem
+
+    def processar(self, simulador):
+        print "- Evento: InicioDeRecebimento em t=%f na maquina=%s, origem=%s" % (
+            simulador.tempo_agora, self.maquina.hostname, self.maquina_origem.hostname )
+
+        if self.maquina == HUB:
+            for maquina in simulador.hosts:
+                #gera evento de InicioDeRecebimento nas maquinas
+                simulador.eventos.adicionar(
+                    simulador.tempo_agora + (maquina.distancia * simulador.tempo_propagacao),
+                    InicioDeRecebimento(self.rodada, maquina, self.maquina_origem)
+                )
+        else:
+            if self.maquina != self.maquina_origem:
+                self.maquina.uso_do_meio += 1
+                self.maquina.checar_jam()
+        
+
+class FimDeRecebimento(Evento):
+    """ """
+
+    def __init__(self, rodada, maquina, maquina_origem):
+        self.rodada = rodada
+        self.maquina = maquina
+        self.maquina_origem = maquina_origem
+
+    def processar(self, simulador):
+        print "- Evento: FimDeRecebimento em t=%f na maquina=%s" % (
+            simulador.tempo_agora, self.maquina.hostname )
+
+        if self.maquina == HUB:
+            for maquina in simulador.hosts:
+                #gera evento de FimDeRecebimento nas maquinas
+                simulador.eventos.adicionar(
+                    simulador.tempo_agora + (maquina.distancia * simulador.tempo_propagacao),
+                    FimDeRecebimento(self.rodada, maquina, self.maquina_origem)
+                )
+        else:
+            if self.maquina != self.maquina_origem:
+                self.maquina.uso_do_meio -= 1
+                self.maquina.checar_jam()
+
+            self.maquina.tentar_enviar(simulador)
 
 ######################################################################
 
 class Simulador(object):
     """Classe principal que encapsula um simulador."""
 
-    def __init__(self, hosts, tempo_minimo_ocioso):
+    def __init__(self, hosts, tempo_minimo_ocioso, tempo_transmissao_quadro, tempo_propagacao):
         """Parâmetros:
         hosts = Lista de máquinas conectadas ao hub."""
         self.hosts = hosts
         self.tempo_minimo_ocioso = tempo_minimo_ocioso
+        self.tempo_transmissao_quadro = tempo_transmissao_quadro
+        self.tempo_propagacao = tempo_propagacao
         self.eventos = HeapDeEventos()
         self.tempo_agora = 0
 
@@ -229,7 +364,12 @@ class Simulador(object):
                 )
 
     def run(self):
-        self.tempo_chegada = Estatisticas()
+        #self.tempo_chegada = Estatisticas()
+        self.tap_rodada = Estatisticas()
+        self.tam_rodada = Estatisticas()
+        self.ncm_rodada = Estatisticas()
+        self.utl_rodada = Estatisticas()
+        self.vaz_rodada = Estatisticas()
 
         """Executa uma rodada da simulação"""
         for iteracao in xrange(100): #*** TODO: COLOCAR UM CRITERIO DE PARADA DECENTE
@@ -239,7 +379,10 @@ class Simulador(object):
             #processar evento
             evento.processar(self)
 
-        print "Média dos tempos = %f" % self.tempo_chegada.media()
-        print "IC dos tempos = %f" % self.tempo_chegada.intervalo_de_confianca()
-        self.tempo_chegada.plot()
+        #print "Média dos tempos = %f" % self.tempo_chegada.media()
+        #print "IC dos tempos = %f" % self.tempo_chegada.intervalo_de_confianca()
+        #self.tempo_chegada.plot()
+
+        print "Média TAp da rodada %d = %f" % (self.rodada_atual, self.tap_rodada.media())
+        self.tap_rodada.plot()
             

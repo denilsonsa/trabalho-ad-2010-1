@@ -58,15 +58,16 @@ class Estatisticas(object):
         return self.soma_amostras / self.num_amostras
 
     def variancia(self):
+        if self.num_amostras < 2:
+            return 0
+
+        #ref: http://en.wikipedia.org/wiki/Variance#Population_variance_and_sample_variance
         sq = self.soma_quadrados
         sa = self.soma_amostras
         n = self.num_amostras
         return (sq / (n - 1)) - ((sa * sa) / (n * (n - 1)))
 
     def intervalo_de_confianca(self):
-        if self.num_amostras < 2:
-            return 0
-
         t_student_95 = 1.645
         return 2 * t_student_95 * sqrt(self.variancia() / self.num_amostras)
         

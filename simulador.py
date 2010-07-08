@@ -6,6 +6,10 @@ import random
 import heapq
 import sys
 
+import matplotlib.pyplot as pyplot
+
+######################################################################
+# Estruturas auxiliares: Heap de eventos e coleta de estatísticas
 
 class HeapDeEventos(list):
     """Implementação de uma fila com prioridades."""
@@ -16,6 +20,56 @@ class HeapDeEventos(list):
     def remover(self):
         """Retorna uma tupla (tempo, evento)"""
         return heapq.heappop(self)
+
+
+class Estatisticas(object):
+    """Coletor de amostras para geração e plotagem de estatísticas"""
+    
+    def __init__(self):
+        self.amostras = []
+        self.intervalos = []
+        self.soma_amostras = 0
+        self.soma_quadrados = 0
+        self.num_amostras = 0
+
+    def adicionar_amostra(self, amostra):
+        self.amostras.append(amostra)
+        self.soma_amostras += amostra
+        self.soma_quadrados += amostra*amostra
+        self.num_amostras += 1
+
+    def adicionar_intervalo(self, intervalo):
+        self.intervalos.append(intervalo)
+
+    def plot(self, titulo = "Estatisticas"):
+        if len(self.amostras) != len(self.intervalos):
+            pyplot.plot(self.amostras)
+        else:
+            x = arange(1, self.num_amostras+1)
+            pyplot.errorbar(x, self.amostras, yerr=self.intervalos)
+
+        pyplot.title(titulo)
+        pyplot.show()
+        
+    def media(self):
+        if self.num_amostras == 0:
+            return 0
+
+        return self.soma_amostras / self.num_amostras
+
+    def variancia(self):
+        sq = self.soma_quadrados
+        sa = self.soma_amostras
+        n = self.num_amostras
+        return (sq / (n - 1)) - ((sa * sa) / (n * (n - 1)))
+
+    def intervalo_de_confianca(self):
+        if self.num_amostras < 2:
+            return 0
+
+        t_student_95 = 1.645
+        return 2 * t_student_95 * sqrt(self.variancia() / self.num_amostras)
+        
 
 
 ######################################################################
@@ -118,6 +172,10 @@ class ChegouMensagem(Evento):
         print "- Evento: ChegouMensagem com %d quadros em t=%f na maquina=%s" % (
             self.num_quadros, simulador.tempo_agora, self.maquina.hostname )
 
+        #adiciona na estatistica (TEMP)
+        simulador.tempo_chegada.adicionar_amostra(simulador.tempo_agora)
+        simulador.tempo_chegada.adicionar_intervalo(simulador.tempo_chegada.intervalo_de_confianca())
+
         #gera próximo evento
         simulador.eventos.adicionar(
             simulador.tempo_agora + self.maquina.chegada(),
@@ -170,6 +228,8 @@ class Simulador(object):
                 )
 
     def run(self):
+        self.tempo_chegada = Estatisticas()
+
         """Executa uma rodada da simulação"""
         for iteracao in xrange(100): #*** TODO: COLOCAR UM CRITERIO DE PARADA DECENTE
             #retirar evento da fila
@@ -177,4 +237,8 @@ class Simulador(object):
 
             #processar evento
             evento.processar(self)
+
+        print "Média dos tempos = %f" % self.tempo_chegada.media()
+        print "IC dos tempos = %f" % self.tempo_chegada.intervalo_de_confianca()
+        self.tempo_chegada.plot()
             

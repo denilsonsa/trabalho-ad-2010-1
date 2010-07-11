@@ -19,20 +19,20 @@ def main():
         Host(
             hostname = "maq2",
             distancia = 80,
-            chegada = Deterministica(80 * 1000),
-            num_quadros = 40
+            chegada = None, #Deterministica(16 * 1000),
+            num_quadros = 1
         ),
         Host(
             hostname = "maq3",
             distancia = 60,
-            chegada = None,
-            num_quadros = 10
+            chegada = None, #Deterministica(16 * 1000),
+            num_quadros = 1
         ),
         Host(
             hostname = "maq4",
             distancia = 40,
-            chegada = None,
-            num_quadros = 10
+            chegada = Deterministica(16 * 1000),
+            num_quadros = 1
         ),
     ]
     simulador = Simulador(    

@@ -42,7 +42,7 @@ def main():
         tempo_reforco_jam = 3.2,
         tempo_fatia_backoff = 51.2,
         tempo_propagacao = 0.005, #5 microseg/km = 0.005 microseg/m
-        eventos_fase_transiente = 30000
+        eventos_fase_transiente = 300000
     )
 
     simulador.start(0)

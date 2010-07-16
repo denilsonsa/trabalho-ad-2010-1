@@ -45,7 +45,7 @@ def main():
         eventos_fase_transiente = 300000
     )
 
-    simulador.start(0)
+    simulador.start()
     simulador.run()
 
 if __name__ == "__main__":

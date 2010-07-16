@@ -19,13 +19,13 @@ def main():
         Host(
             hostname = "maq2",
             distancia = 80,
-            chegada = None, #Deterministica(16 * 1000),
+            chegada = Deterministica(16 * 1000),
             num_quadros = 1
         ),
         Host(
             hostname = "maq3",
             distancia = 60,
-            chegada = None, #Deterministica(16 * 1000),
+            chegada = Deterministica(16 * 1000),
             num_quadros = 1
         ),
         Host(
@@ -42,10 +42,10 @@ def main():
         tempo_reforco_jam = 3.2,
         tempo_fatia_backoff = 51.2,
         tempo_propagacao = 0.005, #5 microseg/km = 0.005 microseg/m
-        eventos_fase_transiente = 30000
+        eventos_fase_transiente = 250000
     )
 
-    simulador.start(0)
+    simulador.start()
     simulador.run()
 
 if __name__ == "__main__":

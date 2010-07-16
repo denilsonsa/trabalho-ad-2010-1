@@ -10,6 +10,12 @@ import matplotlib.pyplot as pyplot
 import math
 
 ######################################################################
+# Função de impressão, para debug
+def debug_print(string):
+    #print string
+    pass
+
+######################################################################
 # Estruturas auxiliares: Heap de eventos e coleta de estatísticas
 
 class HeapDeEventos(list):
@@ -72,8 +78,17 @@ class Estatisticas(object):
         return (sq / (n - 1)) - ((sa * sa) / (n * (n - 1)))
 
     def intervalo_de_confianca(self):
+        if self.num_amostras < 2:
+            return 0
+
         t_student_95 = 1.645
         return 2 * t_student_95 * math.sqrt(self.variancia() / self.num_amostras)
+
+    def precisao_suficiente(self):
+        if self.num_amostras < 2:
+            return False
+
+        return self.intervalo_de_confianca() < 0.1 * self.media()
         
 
 
@@ -130,15 +145,17 @@ class Host(object):
         self.enviando = False
         self.agendado = False
 
-        #estatisticas
-        self.tempo_meio_ocioso_total = 0
-        self.tempo_meio_ocupado_total = 0
-        self.tempo_mudanca_estado_meio = 0;
+        self.tap_global = Estatisticas()
+        self.tam_global = Estatisticas()
+        self.ncm_global = Estatisticas()
+        self.vazao_global = Estatisticas()
 
-        self.tap_rodada = Estatisticas()
-        self.tam_rodada = Estatisticas()
-        self.ncm_rodada = Estatisticas()
-        self.vaz_rodada = Estatisticas()
+        self.tap_global_media = Estatisticas()
+        self.tam_global_media = Estatisticas()
+        self.ncm_global_media = Estatisticas()
+        self.vazao_global_media = Estatisticas()
+
+        self.reiniciar_estatisticas()
 
         # XXX: Cuidado! Não é tratado o caso do número de quadros ser
         # fracionário!
@@ -157,8 +174,42 @@ class Host(object):
                 self.num_quadros = Deterministica(num_quadros)
 
 
+    def precisao_suficiente(self):
+        return self.tap_global.precisao_suficiente() and self.tam_global.precisao_suficiente() and self.ncm_global.precisao_suficiente() and self.vazao_global.precisao_suficiente()
+
+
+    def reiniciar_estatisticas(self):
+        #self.tempo_meio_ocioso_total = 0
+        #self.tempo_meio_ocupado_total = 0
+        #self.tempo_mudanca_estado_meio = 0;
+
+        self.tap_rodada = Estatisticas()
+        self.tam_rodada = Estatisticas()
+        self.ncm_rodada = Estatisticas()
+        self.vazao_rodada = Estatisticas()
+
+
+    def finalizar_rodada(self):
+        self.tap_global.adicionar_amostra(self.tap_rodada.media())
+        print "media %s tap = %d" % (self.hostname, self.tap_rodada.media())
+        self.tap_global_media.adicionar_amostra(self.tap_global.media())
+        self.tap_global_media.adicionar_intervalo(self.tap_global.intervalo_de_confianca())
+
+        self.tam_global.adicionar_amostra(self.tam_rodada.media())
+        self.tam_global_media.adicionar_amostra(self.tam_global.media())
+        self.tam_global_media.adicionar_intervalo(self.tam_global.intervalo_de_confianca())
+
+        self.ncm_global.adicionar_amostra(self.ncm_rodada.media())
+        self.ncm_global_media.adicionar_amostra(self.ncm_global.media())
+        self.ncm_global_media.adicionar_intervalo(self.ncm_global.intervalo_de_confianca())
+
+        self.vazao_global.adicionar_amostra(self.vazao_rodada.media())
+        self.vazao_global_media.adicionar_amostra(self.vazao_global.media())
+        self.vazao_global_media.adicionar_intervalo(self.vazao_global.intervalo_de_confianca())
+
+
     def tentar_enviar(self, simulador):
-        #print "tentar_enviar maquina=%s tentativas=%d tco=%f" % (self.hostname, self.tentativas_de_transmissao, self.tempo_comeco_ocioso)
+        debug_print("tentar_enviar maquina=%s tentativas=%d tco=%f" % (self.hostname, self.tentativas_de_transmissao, self.tempo_comeco_ocioso))
 
         if len(self.fila) == 0: return #nada a transmitir
         if self.enviando: return
@@ -174,6 +225,11 @@ class Host(object):
             if self.tentativas_de_transmissao == 0:
                 #setar tempo de acesso na primeira tentativa somente
                 self.tempo_considerar_envio_quadro = tempo_envio
+
+                if self.proximo_quadro == 0:
+                    self.tempo_considerar_envio_mensagem = tempo_envio
+
+            debug_print("              agendei para t=%f" % (tempo_envio))
 
             simulador.eventos.adicionar(
                 tempo_envio,
@@ -196,8 +252,8 @@ class Host(object):
 
 
     def checar_jam(self, simulador):
-        if self.uso_do_meio != 0 and self.enviando: #colisao
-            #print "  *** COLISAO DETECTADA ***"
+        if self.uso_do_meio != 0 and self.enviando and not self.fim_de_envio.cancelado: #colisao
+            debug_print("  *** COLISAO DETECTADA ***")
 
             #cancelar FimDeEnvio do quadro
             self.fim_de_envio.cancelado = True
@@ -212,8 +268,8 @@ class Host(object):
             if self.tentativas_de_transmissao == 16:
                 #descartar quadro
                 self.andar_fila()
-                simulador.perdidos += 1
-                simulador.totais += 1
+                #simulador.perdidos += 1
+                #simulador.totais += 1
             
             #tentará enviar o quadro novamente no FimDeEnvio do jam
 
@@ -248,8 +304,8 @@ class ChegouMensagem(Evento):
         self.num_quadros = maquina.num_quadros()
         
     def processar(self, simulador):
-        #print "- Evento: ChegouMensagem com %d quadros em t=%f na maquina=%s" % (
-        #    self.num_quadros, simulador.tempo_agora, self.maquina.hostname )
+        debug_print("- Evento: ChegouMensagem com %d quadros em t=%f na maquina=%s" % (
+            self.num_quadros, simulador.tempo_agora, self.maquina.hostname ))
 
         #adiciona na estatistica (TEMP)
         #simulador.tempo_chegada.adicionar_amostra(simulador.tempo_agora)
@@ -258,7 +314,7 @@ class ChegouMensagem(Evento):
         #gera próximo evento
         simulador.eventos.adicionar(
             simulador.tempo_agora + self.maquina.chegada(),
-            ChegouMensagem(self.rodada, self.maquina)
+            ChegouMensagem(simulador.rodada_atual, self.maquina)
         )
 
         fila_vazia = (len(self.maquina.fila) == 0)
@@ -279,8 +335,8 @@ class InicioDeEnvio(Evento):
         self.maquina = maquina
 
     def processar(self, simulador):
-        #print "- Evento: InicioDeEnvio em t=%f maquina=%s quadro=%d" % (
-        #    simulador.tempo_agora, self.maquina.hostname, self.maquina.proximo_quadro )
+        debug_print("- Evento: InicioDeEnvio em t=%f maquina=%s quadro=%d" % (
+            simulador.tempo_agora, self.maquina.hostname, self.maquina.proximo_quadro ))
 
         #verifica mensagem na fila de envio
         #(ela só será removida de fato no FimDeEnvio com sucesso)
@@ -321,12 +377,12 @@ class FimDeEnvio(Evento):
     def processar(self, simulador):
         if self.cancelado: return
 
-        #if self.sou_jam:
-        #    print "- Evento: FimDeEnvio (Jam) em t=%f na maquina=%s" % (
-        #        simulador.tempo_agora, self.maquina.hostname )
-        #else:
-        #    print "- Evento: FimDeEnvio (Quadro) em t=%f na maquina=%s" % (
-        #        simulador.tempo_agora, self.maquina.hostname )
+        if self.sou_jam:
+            debug_print("- Evento: FimDeEnvio (Jam) em t=%f na maquina=%s" % (
+                simulador.tempo_agora, self.maquina.hostname ))
+        else:
+            debug_print("- Evento: FimDeEnvio (Quadro) em t=%f na maquina=%s" % (
+                simulador.tempo_agora, self.maquina.hostname ))
 
         #gera evento de FimDeRecebimento no hub
         simulador.eventos.adicionar(
@@ -335,11 +391,12 @@ class FimDeEnvio(Evento):
         )
 
         if not self.sou_jam:
-            #print "     TAp = %f" % (self.maquina.tempo_comeco_envio_quadro - self.maquina.tempo_considerar_envio_quadro)
+            #debug_print("     TAp = %f" % (self.maquina.tempo_comeco_envio_quadro - self.maquina.tempo_considerar_envio_quadro))
 
             #coleta estatisticas (se rodada valida)
             if self.rodada == simulador.rodada_atual:
                 self.maquina.tap_rodada.adicionar_amostra(self.maquina.tempo_comeco_envio_quadro - self.maquina.tempo_considerar_envio_quadro)
+                #if self.rodada >0: print "adicionando amostra %d (media=%d)" % ((self.maquina.tempo_comeco_envio_quadro - self.maquina.tempo_considerar_envio_quadro), self.maquina.tap_rodada.media())
 
             #reiniciar estado de envio de quadro da máquina
             self.maquina.tentativas_de_transmissao = 0
@@ -347,7 +404,7 @@ class FimDeEnvio(Evento):
             #incrementar proximo quadro a enviar
             self.maquina.andar_fila()
 
-            simulador.totais += 1
+            #simulador.totais += 1
             
 
         #tentar enviar próximo quadro (agendar para daqui a 9.6us)
@@ -365,8 +422,8 @@ class InicioDeRecebimento(Evento):
         self.maquina_origem = maquina_origem
 
     def processar(self, simulador):
-        #print "- Evento: InicioDeRecebimento em t=%f na maquina=%s, origem=%s" % (
-        #    simulador.tempo_agora, self.maquina.hostname, self.maquina_origem.hostname )
+        debug_print("- Evento: InicioDeRecebimento em t=%f na maquina=%s, origem=%s" % (
+            simulador.tempo_agora, self.maquina.hostname, self.maquina_origem.hostname ))
 
         if self.maquina == HUB:
             for maquina in simulador.hosts:
@@ -377,12 +434,14 @@ class InicioDeRecebimento(Evento):
                 )
         else:
             #coletar tempo ocioso
-            self.maquina.tempo_meio_ocioso_total += (simulador.tempo_agora - self.maquina.tempo_mudanca_estado_meio)
-            self.maquina.tempo_mudanca_estado_meio = simulador.tempo_agora
+            #self.maquina.tempo_meio_ocioso_total += (simulador.tempo_agora - self.maquina.tempo_mudanca_estado_meio)
+            #self.maquina.tempo_mudanca_estado_meio = simulador.tempo_agora
 
             if self.maquina != self.maquina_origem:
                 self.maquina.uso_do_meio += 1
                 self.maquina.checar_jam(simulador)
+
+            debug_print("            uso do meio agora = %d" % self.maquina.uso_do_meio)
         
 
 class FimDeRecebimento(Evento):
@@ -394,8 +453,8 @@ class FimDeRecebimento(Evento):
         self.maquina_origem = maquina_origem
 
     def processar(self, simulador):
-        #print "- Evento: FimDeRecebimento em t=%f na maquina=%s" % (
-        #    simulador.tempo_agora, self.maquina.hostname )
+        debug_print("- Evento: FimDeRecebimento em t=%f na maquina=%s, origem = %s" % (
+            simulador.tempo_agora, self.maquina.hostname, self.maquina_origem.hostname ))
 
         if self.maquina == HUB:
             for maquina in simulador.hosts:
@@ -406,13 +465,15 @@ class FimDeRecebimento(Evento):
                 )
         else:
             #coletar tempo ocupado
-            self.maquina.tempo_meio_ocupado_total += (simulador.tempo_agora - self.maquina.tempo_mudanca_estado_meio)
-            self.maquina.tempo_mudanca_estado_meio = simulador.tempo_agora
+            #self.maquina.tempo_meio_ocupado_total += (simulador.tempo_agora - self.maquina.tempo_mudanca_estado_meio)
+            #self.maquina.tempo_mudanca_estado_meio = simulador.tempo_agora
 
             if self.maquina != self.maquina_origem:
                 self.maquina.uso_do_meio -= 1
                 if self.maquina.uso_do_meio == 0:
                     self.maquina.tempo_comeco_ocioso = simulador.tempo_agora
+
+            debug_print("            uso do meio agora = %d" % self.maquina.uso_do_meio)
 
             self.maquina.tentar_enviar(simulador)
 
@@ -439,46 +500,83 @@ class Simulador(object):
         self.eventos = HeapDeEventos()
         self.tempo_agora = 0
 
-    def start(self, rodada):
+    def start(self):
         """Inicializa o simulador, gerando os eventos iniciais"""
-        self.rodada_atual = rodada
-
         for maquina in self.hosts:
             if callable(maquina.chegada):
                 self.eventos.adicionar(
                     maquina.chegada(),
-                    ChegouMensagem(self.rodada_atual, maquina)
+                    ChegouMensagem(0, maquina)
                 )
 
     def run(self):
-        #self.tempo_chegada = Estatisticas()
-        self.utilizacao = Estatisticas()
-        self.perdidos = 0
-        self.totais = 0
+        self.utilizacao_global = Estatisticas()
+        self.utilizacao_global_media = Estatisticas()
 
-        """Executa uma rodada da simulação"""
-        for iteracao in xrange(500000): #*** TODO: COLOCAR UM CRITERIO DE PARADA DECENTE
-            #retirar evento da fila
-            self.tempo_agora, evento = self.eventos.remover()
+        self.tempo_ocupado_total = 0
+        self.tempo_comeco_rodada = self.tempo_agora
+        self.tempo_ultimo = self.tempo_agora
 
-            #processar evento
-            evento.processar(self)
+        self.rodada_atual = 0
 
-            #coletar utilizacao ethernet
-            #if iteracao % 10 == 0:
-            total = self.hosts[0].tempo_meio_ocupado_total + self.hosts[0].tempo_meio_ocioso_total
-            if total == 0:
-                amostra = 0
+        #while True:
+        for bla in xrange(20):
+            #condição de parada
+            if self.rodada_atual > 0:
+                precisao_suficiente = True
+                for host in self.hosts:
+                    if host.chegada != None:
+                        precisao_suficiente = precisao_suficiente and host.precisao_suficiente()
+
+                if precisao_suficiente:
+                    break
+
+            if self.rodada_atual == 0:
+                eventos_rodada = self.eventos_fase_transiente
             else:
-                amostra = self.hosts[0].tempo_meio_ocupado_total / total
+                eventos_rodada = self.eventos_por_rodada
 
-            self.utilizacao.adicionar_amostra(amostra)
+            for host in self.hosts:
+                host.reiniciar_estatisticas()
+
+            """Executa uma rodada da simulação"""
+            for iteracao in xrange(eventos_rodada):
+                #retirar evento da fila
+                self.tempo_agora, evento = self.eventos.remover()
+
+                #atualizar estatistica de utilizaçao
+                if self.hosts[0].enviando or self.hosts[0].uso_do_meio > 0:
+                    self.tempo_ocupado_total += self.tempo_agora - self.tempo_ultimo
+
+                self.tempo_ultimo = self.tempo_agora
+
+                #processar evento
+                evento.processar(self)
+
+                #coletar utilizacao ethernet
+                if self.tempo_agora > self.tempo_comeco_rodada:
+                    self.utilizacao_rodada = self.tempo_ocupado_total / (self.tempo_agora - self.tempo_comeco_rodada)
 
 
+            #adicionar amostras
+            if self.rodada_atual > 0:
+                self.utilizacao_global.adicionar_amostra(self.utilizacao_rodada)
+                self.utilizacao_global_media.adicionar_amostra(self.utilizacao_global.media())
+                self.utilizacao_global_media.adicionar_intervalo(self.utilizacao_global.intervalo_de_confianca())
 
-        print "Média da utilização = %f / pacotes perdidos = %d, totais = %d, perda = %f" % (self.utilizacao.media(), self.perdidos, self.totais, self.perdidos/self.totais)
-        self.utilizacao.plot()
+                for host in self.hosts:
+                    host.finalizar_rodada()
+                
+                print "Rodada %d" % self.rodada_atual
+                print "- Media da utilizacao Ethernet = %f / IC = %f" % (self.utilizacao_global.media(), self.utilizacao_global.intervalo_de_confianca())
+                for i in range(4):
+                    if self.hosts[i].chegada != None:
+                        print "- Media do TAp(%d) = %f / IC = %f" % (i+1, self.hosts[i].tap_global.media(), self.hosts[i].tap_global.intervalo_de_confianca())
 
-        #print "Média TAp(1) da rodada %d = %f" % (self.rodada_atual, self.hosts[0].tap_rodada.media())
-        #self.hosts[0].tap_rodada.plot("TAp")
+
+            #print "Média TAp(1) da rodada %d = %f" % (self.rodada_atual, self.hosts[0].tap_rodada.media())
+
+            self.rodada_atual += 1
             
+        #plotar estatisticas
+        self.utilizacao_global_media.plot()

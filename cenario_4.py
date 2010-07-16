@@ -13,7 +13,7 @@ def main():
         Host(
             hostname = "maq1",
             distancia = 100,
-            chegada = Deterministica(80 * 1000),
+            chegada = Exponencial(80 * 1000),
             num_quadros = 40
         ),
         Host(
@@ -45,7 +45,7 @@ def main():
         eventos_fase_transiente = 30000
     )
 
-    simulador.start(0)
+    simulador.start()
     simulador.run()
 
 if __name__ == "__main__":

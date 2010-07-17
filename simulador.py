@@ -32,7 +32,7 @@ class HeapDeEventos(list):
 
 class Estatisticas(object):
     """Coletor de amostras para geração e plotagem de estatísticas"""
-    
+
     def __init__(self, label="", titulo=u"Estatísticas"):
         self.amostras = []
         self.intervalos = []
@@ -63,7 +63,7 @@ class Estatisticas(object):
         #pyplot.title(titulo)
         #pyplot.legend((titulo))
         #pyplot.show()
-        
+
     def media(self):
         if self.num_amostras == 0:
             return 0
@@ -84,7 +84,10 @@ class Estatisticas(object):
         if self.num_amostras < 2:
             return 0
 
-        t_student_95 = scipy.stats.t.ppf(0.95, self.num_amostras-1) 
+        # 1 - 95% = 5%
+        # 5% / 2 = 2.5%
+        # 1 - 2.5% = 97.5% = 0.975
+        t_student_95 = scipy.stats.t.ppf(0.975, self.num_amostras-1)
         return 2 * t_student_95 * math.sqrt(self.variancia() / self.num_amostras)
 
     def precisao_suficiente(self):
@@ -92,11 +95,11 @@ class Estatisticas(object):
             return False
 
         return self.intervalo_de_confianca() < 0.1 * self.media()
-        
+
 
 
 ######################################################################
-# As funções a seguir são usadas na definição dos parâmetros de cada 
+# As funções a seguir são usadas na definição dos parâmetros de cada
 # Host, na inicialização do simulador.
 
 def Exponencial(intervalo):
@@ -121,7 +124,7 @@ class Mensagem(object):
     def __init__(self, rodada, num_quadros):
         self.rodada = rodada
         self.num_quadros = num_quadros
-    
+
 
 class Host(object):
     """ """
@@ -273,7 +276,7 @@ class Host(object):
 
             #cancelar FimDeEnvio do quadro
             self.fim_de_envio.cancelado = True
-            
+
             #agendar FimDeEnvio do Jam
             simulador.eventos.adicionar(
                 simulador.tempo_agora + simulador.tempo_reforco_jam,
@@ -286,7 +289,7 @@ class Host(object):
                 self.andar_fila(simulador)
                 #simulador.perdidos += 1
                 #simulador.totais += 1
-            
+
             #tentará enviar o quadro novamente no FimDeEnvio do jam
 
 
@@ -298,7 +301,7 @@ class Hub(object):
 
 
 # valor especial que representa o hub no campo "maquina" dos eventos
-HUB = Hub() 
+HUB = Hub()
 
 
 ######################################################################
@@ -308,9 +311,9 @@ class Evento(object):
     """Classe abstrata que representa um evento."""
 
     def processar(self, simulador):
-        raise NotImplementedError()    
+        raise NotImplementedError()
 
-        
+
 class ChegouMensagem(Evento):
     """Classe que representa uma chegada de mensagem da camada superior."""
 
@@ -318,7 +321,7 @@ class ChegouMensagem(Evento):
         self.rodada = rodada
         self.maquina = maquina
         self.num_quadros = maquina.num_quadros()
-        
+
     def processar(self, simulador):
         debug_print("- Evento: ChegouMensagem com %d quadros em t=%f na maquina=%s" % (
             self.num_quadros, simulador.tempo_agora, self.maquina.hostname ))
@@ -346,7 +349,7 @@ class ChegouMensagem(Evento):
 
 class InicioDeEnvio(Evento):
     """ """
-    
+
     def __init__(self, maquina):
         self.maquina = maquina
 
@@ -357,7 +360,7 @@ class InicioDeEnvio(Evento):
         #verifica mensagem na fila de envio
         #(ela só será removida de fato no FimDeEnvio com sucesso)
         mensagem = self.maquina.fila[0]
-        
+
         #gera evento de FimDeEnvio e o salva
         fim_de_envio = FimDeEnvio(mensagem.rodada, self.maquina)
         simulador.eventos.adicionar(
@@ -417,12 +420,12 @@ class FimDeEnvio(Evento):
 
             #reiniciar estado de envio de quadro da máquina
             self.maquina.tentativas_de_transmissao = 0
-            
+
             #incrementar proximo quadro a enviar
             self.maquina.andar_fila(simulador)
 
             #simulador.totais += 1
-            
+
 
         #tentar enviar próximo quadro (agendar para daqui a 9.6us)
         self.maquina.enviando = False
@@ -442,7 +445,7 @@ class InicioDeRecebimento(Evento):
         debug_print("- Evento: InicioDeRecebimento em t=%f na maquina=%s, origem=%s" % (
             simulador.tempo_agora, self.maquina.hostname, self.maquina_origem.hostname ))
 
-        if self.maquina == HUB:
+        if self.maquina is HUB:
             for maquina in simulador.hosts:
                 #gera evento de InicioDeRecebimento nas maquinas
                 simulador.eventos.adicionar(
@@ -459,7 +462,7 @@ class InicioDeRecebimento(Evento):
                 self.maquina.checar_jam(simulador)
 
             debug_print("            uso do meio agora = %d" % self.maquina.uso_do_meio)
-        
+
 
 class FimDeRecebimento(Evento):
     """ """
@@ -473,7 +476,7 @@ class FimDeRecebimento(Evento):
         debug_print("- Evento: FimDeRecebimento em t=%f na maquina=%s, origem = %s" % (
             simulador.tempo_agora, self.maquina.hostname, self.maquina_origem.hostname ))
 
-        if self.maquina == HUB:
+        if self.maquina is HUB:
             for maquina in simulador.hosts:
                 #gera evento de FimDeRecebimento nas maquinas
                 simulador.eventos.adicionar(
@@ -588,7 +591,7 @@ class Simulador(object):
 
                 for host in self.hosts:
                     host.finalizar_rodada(self.tempo_agora - self.tempo_comeco_rodada)
-                
+
                 print "Rodada %d" % self.rodada_atual
                 print "- Media da utilizacao Ethernet = %f / IC = %f" % (self.utilizacao_global.media(), self.utilizacao_global.intervalo_de_confianca())
                 for i in range(4):
@@ -598,13 +601,13 @@ class Simulador(object):
                         print "- Media do Ncm(%d) = %f / IC = %f" % (i+1, self.hosts[i].ncm_global.media(), self.hosts[i].ncm_global.intervalo_de_confianca())
                         print "- Media da Vazao(%d) = %f / IC = %f" % (i+1, self.hosts[i].vazao_global.media(), self.hosts[i].vazao_global.intervalo_de_confianca())
 
-                
+
 
 
             #print "Média TAp(1) da rodada %d = %f" % (self.rodada_atual, self.hosts[0].tap_rodada.media())
 
             self.rodada_atual += 1
-            
+
         #plotar estatisticas
         #pyplot.figure()
 

@@ -81,6 +81,10 @@ class Estatisticas(object):
         return (sq / (n - 1)) - ((sa * sa) / (n * (n - 1)))
 
     def intervalo_de_confianca(self):
+        """Retorna metade do tamanho do intervalo de confiança, ou seja,
+        o intervalo será definido pela média +- o valor retornado por
+        esta função"""
+
         if self.num_amostras < 2:
             return 0
 
@@ -88,13 +92,13 @@ class Estatisticas(object):
         # 5% / 2 = 2.5%
         # 1 - 2.5% = 97.5% = 0.975
         t_student_95 = scipy.stats.t.ppf(0.975, self.num_amostras-1)
-        return 2 * t_student_95 * math.sqrt(self.variancia() / self.num_amostras)
+        return t_student_95 * math.sqrt(self.variancia() / self.num_amostras)
 
     def precisao_suficiente(self):
         if self.num_amostras < 2:
             return False
 
-        return self.intervalo_de_confianca() < 0.1 * self.media()
+        return 2 * self.intervalo_de_confianca() < self.media() / 10.0
 
 
 
@@ -593,13 +597,13 @@ class Simulador(object):
                     host.finalizar_rodada(self.tempo_agora - self.tempo_comeco_rodada)
 
                 print "Rodada %d" % self.rodada_atual
-                print "- Media da utilizacao Ethernet = %f / IC = %f" % (self.utilizacao_global.media(), self.utilizacao_global.intervalo_de_confianca())
+                print "- Media da utilizacao Ethernet = %f / IC +- %f" % (self.utilizacao_global.media(), self.utilizacao_global.intervalo_de_confianca())
                 for i in range(4):
                     if self.hosts[i].chegada != None:
-                        print "- Media do TAp(%d) = %f / IC = %f" % (i+1, self.hosts[i].tap_global.media(), self.hosts[i].tap_global.intervalo_de_confianca())
-                        print "- Media do TAm(%d) = %f / IC = %f" % (i+1, self.hosts[i].tam_global.media(), self.hosts[i].tam_global.intervalo_de_confianca())
-                        print "- Media do Ncm(%d) = %f / IC = %f" % (i+1, self.hosts[i].ncm_global.media(), self.hosts[i].ncm_global.intervalo_de_confianca())
-                        print "- Media da Vazao(%d) = %f / IC = %f" % (i+1, self.hosts[i].vazao_global.media(), self.hosts[i].vazao_global.intervalo_de_confianca())
+                        print "- Media do TAp(%d)   = %13f / IC +- %13f" % (i+1, self.hosts[i].tap_global.media(), self.hosts[i].tap_global.intervalo_de_confianca())
+                        print "- Media do TAm(%d)   = %13f / IC +- %13f" % (i+1, self.hosts[i].tam_global.media(), self.hosts[i].tam_global.intervalo_de_confianca())
+                        print "- Media do Ncm(%d)   = %13f / IC +- %13f" % (i+1, self.hosts[i].ncm_global.media(), self.hosts[i].ncm_global.intervalo_de_confianca())
+                        print "- Media da Vazao(%d) = %13f / IC +- %13f" % (i+1, self.hosts[i].vazao_global.media(), self.hosts[i].vazao_global.intervalo_de_confianca())
 
 
 

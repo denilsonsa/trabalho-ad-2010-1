@@ -144,7 +144,7 @@ class Host(object):
         self.tempo_comeco_envio_quadro = -1
         self.tempo_comeco_envio_mensagem = -1
         self.uso_do_meio = 0
-        self.tempo_comeco_ocioso = -10000
+        self.tempo_comeco_ocioso = -100000.0
         self.enviando = False
         self.agendado = False
         self.contador_colisoes = 0

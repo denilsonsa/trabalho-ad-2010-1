@@ -33,12 +33,13 @@ class HeapDeEventos(list):
 class Estatisticas(object):
     """Coletor de amostras para geração e plotagem de estatísticas"""
     
-    def __init__(self, titulo = "Estatisticas"):
+    def __init__(self, label="", titulo=u"Estatísticas"):
         self.amostras = []
         self.intervalos = []
         self.soma_amostras = 0
         self.soma_quadrados = 0
         self.num_amostras = 0
+        self.label = label
         self.titulo = titulo
 
     def adicionar_amostra(self, amostra):
@@ -57,11 +58,11 @@ class Estatisticas(object):
             plot = pyplot.plot(self.amostras)
         else:
             x = numpy.arange(1, self.num_amostras+1)
-            pyplot.errorbar(x, self.amostras, yerr=self.intervalos)
+            pyplot.errorbar(x, self.amostras, yerr=self.intervalos, label=self.label)
 
         #pyplot.title(titulo)
         #pyplot.legend((titulo))
-        pyplot.show()
+        #pyplot.show()
         
     def media(self):
         if self.num_amostras == 0:
@@ -83,8 +84,7 @@ class Estatisticas(object):
         if self.num_amostras < 2:
             return 0
 
-        #t_student_95 = 1.645
-        t_student_95 = scipy.stats.t.ppf(0.95, self.num_amostras) 
+        t_student_95 = scipy.stats.t.ppf(0.95, self.num_amostras-1) 
         return 2 * t_student_95 * math.sqrt(self.variancia() / self.num_amostras)
 
     def precisao_suficiente(self):
@@ -149,15 +149,15 @@ class Host(object):
         self.agendado = False
         self.contador_colisoes = 0
 
-        self.tap_global = Estatisticas()
-        self.tam_global = Estatisticas()
-        self.ncm_global = Estatisticas()
-        self.vazao_global = Estatisticas()
+        self.tap_global = Estatisticas(label=self.hostname)
+        self.tam_global = Estatisticas(label=self.hostname)
+        self.ncm_global = Estatisticas(label=self.hostname)
+        self.vazao_global = Estatisticas(label=self.hostname)
 
-        self.tap_global_media = Estatisticas()
-        self.tam_global_media = Estatisticas()
-        self.ncm_global_media = Estatisticas()
-        self.vazao_global_media = Estatisticas()
+        self.tap_global_media = Estatisticas(label=self.hostname)
+        self.tam_global_media = Estatisticas(label=self.hostname)
+        self.ncm_global_media = Estatisticas(label=self.hostname)
+        self.vazao_global_media = Estatisticas(label=self.hostname)
 
         self.reiniciar_estatisticas()
 
@@ -187,9 +187,13 @@ class Host(object):
         #self.tempo_meio_ocupado_total = 0
         #self.tempo_mudanca_estado_meio = 0;
 
-        self.tap_rodada = Estatisticas()
-        self.tam_rodada = Estatisticas()
-        self.ncm_rodada = Estatisticas()
+        # TODO: Em vez de criar um novo objeto, seria melhor ter uma
+        # função para resetar os objetos já existentes. Motivo? Apenas
+        # para evitar de passar novamente os mesmos parâmetros ao
+        # construtor.
+        self.tap_rodada = Estatisticas(label=self.hostname)
+        self.tam_rodada = Estatisticas(label=self.hostname)
+        self.ncm_rodada = Estatisticas(label=self.hostname)
 
         self.quadros_com_sucesso = 0
 
@@ -534,6 +538,7 @@ class Simulador(object):
         print "Fase transiente..."
 
         while True:
+        #for bla in xrange(3):  # Roda só 2 rodadas para testar rapidamente
             #condição de parada
             if self.rodada_atual > 0:
                 precisao_suficiente = True
@@ -556,7 +561,7 @@ class Simulador(object):
             self.tempo_comeco_rodada = self.tempo_agora
             self.tempo_ultimo = self.tempo_agora
 
-            """Executa uma rodada da simulação"""
+            # Executa uma rodada da simulação
             for iteracao in xrange(eventos_rodada):
                 #retirar evento da fila
                 self.tempo_agora, evento = self.eventos.remover()
@@ -603,52 +608,47 @@ class Simulador(object):
         #plotar estatisticas
         #pyplot.figure()
 
-        legends = []
-        for host in self.hosts:
-            if host.chegada != None:
-                legends.append(host.hostname)
-
         pyplot.subplot(231)
         for host in self.hosts:
             if host.chegada != None:
                 host.tap_global_media.plot()
-        pyplot.legend(legends)
-        pyplot.title("TAp (us)")
+        pyplot.legend(fancybox=True, shadow=True)
+        pyplot.title(u"TAp (µs)")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(234)
         for host in self.hosts:
             if host.chegada != None:
                 host.tam_global_media.plot()
-        pyplot.legend(legends)
-        pyplot.title("TAm (us)")
+        pyplot.legend(fancybox=True, shadow=True)
+        pyplot.title(u"TAm (µs)")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(232)
         for host in self.hosts:
             if host.chegada != None:
                 host.ncm_global_media.plot()
-        pyplot.legend(legends)
-        pyplot.title("NCm")
+        pyplot.legend(fancybox=True, shadow=True)
+        pyplot.title(u"NCm")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(235)
         for host in self.hosts:
             if host.chegada != None:
                 host.vazao_global_media.plot()
-        pyplot.legend(legends)
-        pyplot.title("Vazao (quadros/seg)")
+        pyplot.legend(fancybox=True, shadow=True)
+        pyplot.title(u"Vazão (quadros/seg)")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(233)
         self.utilizacao_global_media.plot()
-        pyplot.title("Utilizacao Ethernet (por rodada)")
+        pyplot.title(u"Utilização Ethernet (por rodada)")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(236)
         self.utilizacao_total.plot()
-        pyplot.title("Utilizacao Ethernet (continua)")
-        pyplot.xlabel("eventos / 1000");
+        pyplot.title(u"Utilização Ethernet (contínua)")
+        pyplot.xlabel(u"eventos / 1000");
 
         #pyplot.xlim([0, self.rodada_atual+1])
         pyplot.show()

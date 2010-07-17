@@ -1,20 +1,33 @@
 # -*- coding: utf-8 -*-
 # vi:ts=4 sw=4 et
 
-import numpy
-import scipy.stats
-import random
 import heapq
-import sys
-
-import matplotlib.pyplot as pyplot
 import math
+import matplotlib.pyplot as pyplot
+import numpy
+import random
+import scipy.stats
+
 
 ######################################################################
-# Função de impressão, para debug
+# Funções úteis
+
 def debug_print(string):
+    """Função de impressão, para debug"""
     #print string
     pass
+
+def exibir_legenda():
+    """Exibe a legenda no gráfico"""
+    l = pyplot.legend(fancybox=True, shadow=True)
+
+    # Fundo cinza
+    l.get_frame().set_facecolor('0.90')
+
+    # Tamanho do texto
+    for t in l.get_texts():
+        t.set_fontsize('x-small')
+
 
 ######################################################################
 # Estruturas auxiliares: Heap de eventos e coleta de estatísticas
@@ -61,7 +74,6 @@ class Estatisticas(object):
             pyplot.errorbar(x, self.amostras, yerr=self.intervalos, label=self.label)
 
         #pyplot.title(titulo)
-        #pyplot.legend((titulo))
         #pyplot.show()
 
     def media(self):
@@ -99,7 +111,6 @@ class Estatisticas(object):
             return False
 
         return 2 * self.intervalo_de_confianca() < self.media() / 10.0
-
 
 
 ######################################################################
@@ -501,6 +512,7 @@ class FimDeRecebimento(Evento):
 
             self.maquina.tentar_enviar(simulador)
 
+
 ######################################################################
 
 class Simulador(object):
@@ -619,7 +631,8 @@ class Simulador(object):
         for host in self.hosts:
             if host.chegada != None:
                 host.tap_global_media.plot()
-        pyplot.legend(fancybox=True, shadow=True)
+        exibir_legenda()
+        pyplot.grid(True)
         pyplot.title(u"TAp (µs)")
         pyplot.xlim([0, self.rodada_atual+1])
 
@@ -627,7 +640,8 @@ class Simulador(object):
         for host in self.hosts:
             if host.chegada != None:
                 host.tam_global_media.plot()
-        pyplot.legend(fancybox=True, shadow=True)
+        exibir_legenda()
+        pyplot.grid(True)
         pyplot.title(u"TAm (µs)")
         pyplot.xlim([0, self.rodada_atual+1])
 
@@ -635,7 +649,8 @@ class Simulador(object):
         for host in self.hosts:
             if host.chegada != None:
                 host.ncm_global_media.plot()
-        pyplot.legend(fancybox=True, shadow=True)
+        exibir_legenda()
+        pyplot.grid(True)
         pyplot.title(u"NCm")
         pyplot.xlim([0, self.rodada_atual+1])
 
@@ -643,21 +658,24 @@ class Simulador(object):
         for host in self.hosts:
             if host.chegada != None:
                 host.vazao_global_media.plot()
-        pyplot.legend(fancybox=True, shadow=True)
+        exibir_legenda()
+        pyplot.grid(True)
         pyplot.title(u"Vazão (quadros/seg)")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(233)
         self.utilizacao_global_media.plot()
+        pyplot.grid(True)
         pyplot.title(u"Utilização Ethernet (por rodada)")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(236)
         self.utilizacao_total.plot()
+        pyplot.grid(True)
         pyplot.title(u"Utilização Ethernet (contínua)")
         pyplot.xlabel(u"eventos / 1000");
-
         #pyplot.xlim([0, self.rodada_atual+1])
+
         pyplot.show()
 
         #self.utilizacao_global_media.plot()

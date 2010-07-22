@@ -5,6 +5,8 @@
 import cPickle as pickle
 import sys
 
+import simulador
+reload(simulador)
 from simulador import *
 
 

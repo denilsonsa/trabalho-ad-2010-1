@@ -575,7 +575,8 @@ class Simulador(object):
             tempo_transmissao_quadro=800,  # 8000 bits/quadro / 10 Mbps = 800microseg/quadro
             tempo_propagacao=0.005,  # 5 microseg/km = 0.005 microseg/m
             tempo_reforco_jam=3.2,
-            tempo_fatia_backoff=51.2
+            tempo_fatia_backoff=51.2,
+            maximo_de_rodadas=-1
         ):
         """Recebe todos os parâmetros da simulação."""
         self.hosts = hosts
@@ -588,6 +589,7 @@ class Simulador(object):
         self.tempo_propagacao = tempo_propagacao
         self.tempo_reforco_jam = tempo_reforco_jam
         self.tempo_fatia_backoff = tempo_fatia_backoff
+        self.maximo_de_rodadas = maximo_de_rodadas
 
     def start(self):
         """Prepara o simulador, inicializando algumas variáveis e
@@ -629,12 +631,16 @@ class Simulador(object):
             # - não estou na fase transiente
             # - e todos os hosts chegaram à precisão desejada
             # - e a utilização do Ethernet chegou à precisão desejada
-            if self.rodada_atual > 0 \
-            and all(
-                host.precisao_suficiente()
-                for host in self.hosts if host.ativo
-            ) and self.utilizacao_global_media.precisao_suficiente():
-                break
+            if self.maximo_de_rodadas == -1:
+                if self.rodada_atual > 0 \
+                and all(
+                    host.precisao_suficiente()
+                    for host in self.hosts if host.ativo
+                ) and self.utilizacao_global_media.precisao_suficiente():
+                    break
+            else:
+                if self.rodada_atual > self.maximo_de_rodadas:
+                    break
 
             # Wallclock é relógio de parede, e armazena o tempo
             # decorrido no "mundo real"

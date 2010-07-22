@@ -617,6 +617,7 @@ class Simulador(object):
         print "Fase transiente..."
         self.rodada_atual = 0
 
+        # Loop que executa todas as rodadas
         while True:
         #for bla in xrange(3):  # DEBUG: Roda só 2 rodadas para testar rapidamente
 
@@ -631,6 +632,7 @@ class Simulador(object):
             ) and self.utilizacao_global_media.precisao_suficiente():
                 break
 
+            # Reiniciando estatísticas para a próxima rodada
             for host in self.hosts:
                 host.reiniciar_estatisticas()
 
@@ -639,12 +641,12 @@ class Simulador(object):
             self.tempo_evento_anterior = self.tempo_agora
 
             if self.rodada_atual == 0:
-                eventos_rodada = self.eventos_fase_transiente
+                eventos_nesta_rodada = self.eventos_fase_transiente
             else:
-                eventos_rodada = self.eventos_por_rodada
+                eventos_nesta_rodada = self.eventos_por_rodada
 
-            # Executa uma rodada da simulação
-            for iteracao in xrange(eventos_rodada):
+            # Executa os eventos dentro de uma rodada
+            for iteracao in xrange(eventos_nesta_rodada):
                 # Retirar evento da fila
                 self.tempo_agora, evento = self.eventos.remover()
 
@@ -746,7 +748,7 @@ class Simulador(object):
         #exibir_legenda()
         pyplot.grid(True)
         pyplot.title(u"TAp (µs)\ntempo médio de acesso de um quadro", fontsize="small")
-        pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xlim(0, self.rodada_atual)
         pyplot.xticks(fontsize="x-small")
         pyplot.yticks(fontsize="x-small")
 
@@ -757,7 +759,7 @@ class Simulador(object):
         #exibir_legenda()
         pyplot.grid(True)
         pyplot.title(u"TAm (µs)\ntempo médio de acesso de uma msg.", fontsize="small")
-        pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xlim(0, self.rodada_atual)
         pyplot.xticks(fontsize="x-small")
         pyplot.yticks(fontsize="x-small")
 
@@ -768,7 +770,7 @@ class Simulador(object):
         #exibir_legenda()
         pyplot.grid(True)
         pyplot.title(u"NCm\nnúm. médio de colisões por quadro", fontsize="small")
-        pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xlim(0, self.rodada_atual)
         pyplot.xticks(fontsize="x-small")
         pyplot.yticks(fontsize="x-small")
 
@@ -779,7 +781,7 @@ class Simulador(object):
         exibir_legenda()
         pyplot.grid(True)
         pyplot.title(u"Vazão média (quadros/segundo)", fontsize="small")
-        pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xlim(0, self.rodada_atual)
         pyplot.xticks(fontsize="x-small")
         pyplot.yticks(fontsize="x-small")
 
@@ -789,17 +791,25 @@ class Simulador(object):
         exibir_legenda()
         pyplot.grid(True)
         pyplot.title(u"Utilização do Ethernet (por rodada)", fontsize="small")
-        pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xlim(0, self.rodada_atual)
         pyplot.xticks(fontsize="x-small")
         pyplot.yticks(fontsize="x-small")
 
     def gerar_grafico_utilizacao_total(self):
         self.utilizacao_total.plot()
         pyplot.xscale("log")
-        pyplot.axvline(self.eventos_fase_transiente/1000, color="red")
-        pyplot.annotate(u"Fim da fase transiente",
-            xy=(self.eventos_fase_transiente/1000, 0.0625),
+
+        # Marcando o fim da fase transiente
+        pos_x = self.eventos_fase_transiente/1000.0
+        pyplot.axvline(pos_x, color="red")
+        pyplot.annotate(u"Fim da fase transiente", xy=(pos_x, 0.0625),
             rotation="vertical", size="x-small", ha="right", va="bottom")
+
+        # Marcando o fim de cada rodada
+        for rodada in xrange(1,self.rodada_atual):
+            pos_x += self.eventos_por_rodada/1000.0
+            pyplot.axvline(pos_x, color="green")
+
         pyplot.grid(True)
         # pyplot.grid(True, which="both") # which option has been added in matplotlib 1.0.0
         pyplot.title(u"Utilização do Ethernet (contínua)", fontsize="small")

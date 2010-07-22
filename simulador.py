@@ -153,7 +153,7 @@ class Mensagem(object):
 class Host(object):
 
     def __init__(self, hostname, distancia, chegada, num_quadros):
-        """Parâmetros:
+        """Recebe os parâmetros do host:
         hostname = Nome da máquina (ignorado pelo simulador)
         dist = Distância deste host ao hub (medida em metros)
         chegada = Processo de chegada das mensagens a ser enviadas
@@ -165,6 +165,32 @@ class Host(object):
         # Estes dois campos campos serão definidos mais abaixo
         #self.num_quadros = num_quadros
         #self.ativo = (chegada and num_quadros)
+
+        if callable(num_quadros) or num_quadros is None:
+            # Se o tipo de distribuição foi definido explicitamente:
+            self.num_quadros = num_quadros
+        else:
+            # Caso contrário, auto-detectar o tipo de distribuição através
+            # do número passado
+            if num_quadros < 1:
+                # O número passado é uma probabilidade
+                self.num_quadros = Geometrica(num_quadros)
+            else:
+                # O número passado é uma quantidade constante
+                # (determinística) de quadros.
+                # Cuidado! Não é tratado o caso do número de quadros ser
+                # fracionário!
+                self.num_quadros = Deterministica(num_quadros)
+
+        # Um host é considerado ativo se ele gera tráfego. Ou seja, se
+        # ele tem uma distribuição de chegada de mensagens e de número
+        # de quadros de cada mensagem.
+        self.ativo = callable(self.chegada) and callable(self.num_quadros)
+
+    def reset(self):
+        """Faz um "reset" no host, reiniciando todas as estatísticas e o
+        estado do host. Este método deve ser chamado antes de começar a
+        simulação."""
 
         # Fila de mensagens
         self.fila = []
@@ -196,38 +222,6 @@ class Host(object):
 
         self.reiniciar_estatisticas()
 
-        if callable(num_quadros) or num_quadros is None:
-            # Se o tipo de distribuição foi definido explicitamente:
-            self.num_quadros = num_quadros
-        else:
-            # Caso contrário, auto-detectar o tipo de distribuição através
-            # do número passado
-            if num_quadros < 1:
-                # O número passado é uma probabilidade
-                self.num_quadros = Geometrica(num_quadros)
-            else:
-                # O número passado é uma quantidade constante
-                # (determinística) de quadros.
-                # Cuidado! Não é tratado o caso do número de quadros ser
-                # fracionário!
-                self.num_quadros = Deterministica(num_quadros)
-
-        # Um host é considerado ativo se ele gera tráfego. Ou seja, se
-        # ele tem uma distribuição de chegada de mensagens e de número
-        # de quadros de cada mensagem.
-        self.ativo = callable(self.chegada) and callable(self.num_quadros)
-
-    def precisao_suficiente(self):
-        """Indica se as estatísticas coletadas neste host já possuem a
-        precisão desejada."""
-
-        return (
-            self.tap_global.precisao_suficiente() and
-            self.tam_global.precisao_suficiente() and
-            self.ncm_global.precisao_suficiente() and
-            self.vazao_global.precisao_suficiente()
-        )
-
     def reiniciar_estatisticas(self):
         """Reinicia as estatísticas no início de uma rodada."""
 
@@ -240,6 +234,17 @@ class Host(object):
         self.ncm_rodada = Estatisticas()
 
         self.quadros_com_sucesso = 0
+
+    def precisao_suficiente(self):
+        """Indica se as estatísticas coletadas neste host já possuem a
+        precisão desejada."""
+
+        return (
+            self.tap_global.precisao_suficiente() and
+            self.tam_global.precisao_suficiente() and
+            self.ncm_global.precisao_suficiente() and
+            self.vazao_global.precisao_suficiente()
+        )
 
     def finalizar_rodada(self, tempo_rodada):
         """Salva as estatísticas da rodada na estatística global."""
@@ -596,6 +601,7 @@ class Simulador(object):
         self.tempo_agora = 0
 
         for host in self.hosts:
+            host.reset()
             if host.ativo:
                 self.eventos.adicionar(
                     host.chegada(),
@@ -706,7 +712,7 @@ class Simulador(object):
             cols = 2
             pos_index = 1
         else:
-            raise NotImplementedError("Layout desconhecido: '%s'" % layout)
+            raise ValueError("Layout desconhecido: '%s'" % layout)
 
         # Desenha os 6 gráficos
         for grafico in graficos:

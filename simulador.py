@@ -65,7 +65,12 @@ class Estatisticas(object):
         self.intervalos.append(intervalo)
 
     def plot(self):
-        if len(self.amostras) == 0: return
+        """Desenha uma linha correspondente às amostras coletadas. Caso
+        os intervalos de confiança tenham sido calculados, desenha
+        também o tamanho dos intervalos."""
+
+        if len(self.amostras) == 0:
+            return
 
         if len(self.amostras) != len(self.intervalos):
             plot = pyplot.plot(self.amostras)
@@ -77,12 +82,14 @@ class Estatisticas(object):
         #pyplot.show()
 
     def media(self):
+        """Retorna a média das amostras"""
         if self.num_amostras == 0:
             return 0
 
         return self.soma_amostras / self.num_amostras
 
     def variancia(self):
+        """Retorna a variância das amostras"""
         if self.num_amostras < 2:
             return 0
 
@@ -107,6 +114,9 @@ class Estatisticas(object):
         return t_student_95 * math.sqrt(self.variancia() / self.num_amostras)
 
     def precisao_suficiente(self):
+        """Retorna True ou False, indicando se a largura do intervalo de
+        confiança é menor que 10% da média das amostras."""
+
         if self.num_amostras < 2:
             return False
 
@@ -134,7 +144,7 @@ def Geometrica(probabilidade):
 # Coisas que encapsulam a interface do Host
 
 class Mensagem(object):
-    """ """
+    """Classe que representa uma mensagem a ser enviada."""
 
     def __init__(self, rodada, num_quadros):
         self.rodada = rodada
@@ -142,7 +152,6 @@ class Mensagem(object):
 
 
 class Host(object):
-    """ """
 
     def __init__(self, hostname, distancia, chegada, num_quadros):
         """Parâmetros:
@@ -154,9 +163,15 @@ class Host(object):
         self.hostname = hostname
         self.distancia = distancia
         self.chegada = chegada
+        # Estes dois campos campos serão definidos mais abaixo
         #self.num_quadros = num_quadros
-        self.fila = [] #fila de mensagens
+        #self.ativo = (chegada and num_quadros)
+
+        # Fila de mensagens
+        self.fila = []
+        # Número do próximo quadro (dentro da mensagem atual) a ser enviado
         self.proximo_quadro = 0
+
         self.tentativas_de_transmissao = 0
         self.tempo_considerar_envio_quadro = -1
         self.tempo_comeco_envio_quadro = -1
@@ -179,9 +194,7 @@ class Host(object):
 
         self.reiniciar_estatisticas()
 
-        # XXX: Cuidado! Não é tratado o caso do número de quadros ser
-        # fracionário!
-        if callable(num_quadros):
+        if callable(num_quadros) or num_quadros is None:
             # Se o tipo de distribuição foi definido explicitamente:
             self.num_quadros = num_quadros
         else:
@@ -192,31 +205,43 @@ class Host(object):
                 self.num_quadros = Geometrica(num_quadros)
             else:
                 # O número passado é uma quantidade constante
-                # (determinística) de quadros
+                # (determinística) de quadros.
+                # Cuidado! Não é tratado o caso do número de quadros ser
+                # fracionário!
                 self.num_quadros = Deterministica(num_quadros)
 
+        # Um host é considerado ativo se ele gera tráfego. Ou seja, se
+        # ele tem uma distribuição de chegada de mensagens e de número
+        # de quadros de cada mensagem.
+        self.ativo = callable(self.chegada) and callable(self.num_quadros)
 
     def precisao_suficiente(self):
-        return self.tap_global.precisao_suficiente() and self.tam_global.precisao_suficiente() and self.ncm_global.precisao_suficiente() and self.vazao_global.precisao_suficiente()
+        """Indica se as estatísticas coletadas neste host já possuem a
+        precisão desejada."""
 
+        return (
+            self.tap_global.precisao_suficiente() and
+            self.tam_global.precisao_suficiente() and
+            self.ncm_global.precisao_suficiente() and
+            self.vazao_global.precisao_suficiente()
+        )
 
     def reiniciar_estatisticas(self):
+        """Reinicia as estatísticas no início de uma rodada."""
+
         #self.tempo_meio_ocioso_total = 0
         #self.tempo_meio_ocupado_total = 0
         #self.tempo_mudanca_estado_meio = 0;
 
-        # TODO: Em vez de criar um novo objeto, seria melhor ter uma
-        # função para resetar os objetos já existentes. Motivo? Apenas
-        # para evitar de passar novamente os mesmos parâmetros ao
-        # construtor.
         self.tap_rodada = Estatisticas(label=self.hostname)
         self.tam_rodada = Estatisticas(label=self.hostname)
         self.ncm_rodada = Estatisticas(label=self.hostname)
 
         self.quadros_com_sucesso = 0
 
-
     def finalizar_rodada(self, tempo_rodada):
+        """Salva as estatísticas da rodada na estatística global."""
+
         self.tap_global.adicionar_amostra(self.tap_rodada.media())
         self.tap_global_media.adicionar_amostra(self.tap_global.media())
         self.tap_global_media.adicionar_intervalo(self.tap_global.intervalo_de_confianca())
@@ -232,7 +257,6 @@ class Host(object):
         self.vazao_global.adicionar_amostra(1000000.0 * self.quadros_com_sucesso / tempo_rodada)
         self.vazao_global_media.adicionar_amostra(self.vazao_global.media())
         self.vazao_global_media.adicionar_intervalo(self.vazao_global.intervalo_de_confianca())
-
 
     def tentar_enviar(self, simulador):
         debug_print("tentar_enviar maquina=%s tentativas=%d tco=%f" % (self.hostname, self.tentativas_de_transmissao, self.tempo_comeco_ocioso))
@@ -538,11 +562,11 @@ class Simulador(object):
 
     def start(self):
         """Inicializa o simulador, gerando os eventos iniciais"""
-        for maquina in self.hosts:
-            if callable(maquina.chegada):
+        for host in self.hosts:
+            if host.ativo:
                 self.eventos.adicionar(
-                    maquina.chegada(),
-                    ChegouMensagem(0, maquina)
+                    host.chegada(),
+                    ChegouMensagem(0, host)
                 )
 
     def run(self):
@@ -558,15 +582,16 @@ class Simulador(object):
 
         while True:
         #for bla in xrange(3):  # Roda só 2 rodadas para testar rapidamente
-            #condição de parada
-            if self.rodada_atual > 0:
-                precisao_suficiente = True
-                for host in self.hosts:
-                    if host.chegada != None:
-                        precisao_suficiente = precisao_suficiente and host.precisao_suficiente()
 
-                if precisao_suficiente:
-                    break
+            # Condição de parada:
+            # - não estou na fase transiente
+            # - e todos os hosts chegaram à precisão desejada
+            if self.rodada_atual > 0 \
+            and all(
+                host.precisao_suficiente()
+                for host in self.hosts if host.ativo
+            ):
+                break
 
             if self.rodada_atual == 0:
                 eventos_rodada = self.eventos_fase_transiente
@@ -629,7 +654,7 @@ class Simulador(object):
 
         pyplot.subplot(231)
         for host in self.hosts:
-            if host.chegada != None:
+            if host.ativo:
                 host.tap_global_media.plot()
         exibir_legenda()
         pyplot.grid(True)
@@ -638,7 +663,7 @@ class Simulador(object):
 
         pyplot.subplot(234)
         for host in self.hosts:
-            if host.chegada != None:
+            if host.ativo:
                 host.tam_global_media.plot()
         exibir_legenda()
         pyplot.grid(True)
@@ -647,7 +672,7 @@ class Simulador(object):
 
         pyplot.subplot(232)
         for host in self.hosts:
-            if host.chegada != None:
+            if host.ativo:
                 host.ncm_global_media.plot()
         exibir_legenda()
         pyplot.grid(True)
@@ -656,7 +681,7 @@ class Simulador(object):
 
         pyplot.subplot(235)
         for host in self.hosts:
-            if host.chegada != None:
+            if host.ativo:
                 host.vazao_global_media.plot()
         exibir_legenda()
         pyplot.grid(True)

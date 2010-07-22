@@ -26,13 +26,13 @@ def main():
             hostname = "maq3",
             distancia = 60,
             chegada = None,
-            num_quadros = 10
+            num_quadros = None
         ),
         Host(
             hostname = "maq4",
             distancia = 40,
             chegada = None,
-            num_quadros = 10
+            num_quadros = None
         ),
     ]
     simulador = Simulador(    

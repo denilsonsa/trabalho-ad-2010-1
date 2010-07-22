@@ -13,7 +13,7 @@ def main():
         Host(
             hostname = "maq1",
             distancia = 100,
-            chegada = Exponencial(80 * 1000),
+            chegada = Deterministica(80 * 1000),
             num_quadros = 40
         ),
         Host(

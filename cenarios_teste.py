@@ -40,9 +40,9 @@ def teste1():
     simulador = Simulador(    
         hosts = maquinas,
         eventos_fase_transiente = 1250000,
-        eventos_por_rodada = 300000,
-        titulo = u"Cenário 1",
-        maximo_de_rodadas = 10
+        eventos_por_rodada = 30000,
+        titulo = u"Cenário de teste 1",
+        numero_de_rodadas = 10
     )
     return simulador
 

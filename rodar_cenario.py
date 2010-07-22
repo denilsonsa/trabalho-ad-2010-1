@@ -162,7 +162,7 @@ cenarios = {
 
 def print_help():
     print "Digite: %s <cenário>" % (sys.argv[0],)
-    print "Cenários disponíveis: " + " ".join(cenarios.keys())
+    print "Cenários disponíveis: " + " ".join(sorted(cenarios.keys()))
 
 
 def main():

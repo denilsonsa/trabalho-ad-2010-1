@@ -694,7 +694,7 @@ class Simulador(object):
 
         pyplot.subplot(2,3,3)
         self.utilizacao_global_media.plot(label=u"média")
-        self.utilizacao_global.plot(marker="x", label=u"amostras")
+        self.utilizacao_global.plot(marker="x", color="#C04040", label=u"amostras")
         exibir_legenda()
         pyplot.grid(True)
         pyplot.title(u"Utilização do Ethernet (por rodada)", fontsize="small")
@@ -705,10 +705,8 @@ class Simulador(object):
         pyplot.xscale("log", basex=10, subsx=range(0,10,2))
         pyplot.axvline(self.eventos_fase_transiente/1000, color="red")
         pyplot.annotate(u"Fim da fase transiente",
-            xy=(self.eventos_fase_transiente/1000, 0.0625), xycoords="data",
-            xytext=(0.95, 0.25), textcoords="figure fraction", size="x-small",
-            arrowprops=dict(arrowstyle="->"),
-            horizontalalignment="right", verticalalignment="bottom")
+            xy=(self.eventos_fase_transiente/1000, 0.0625),
+            rotation="vertical", size="x-small", ha="right", va="bottom")
         pyplot.grid(True)
         # pyplot.grid(True, which="both") # which option has been added in matplotlib 1.0.0
         pyplot.title(u"Utilização do Ethernet (contínua)", fontsize="small")

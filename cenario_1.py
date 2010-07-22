@@ -7,8 +7,7 @@ reload(simulador)
 from simulador import *
 
 
-def main():
-    # Pequeno teste, com valores quaisquer, escolhidos aleatoriamente
+def init():
     maquinas = [
         Host(
             hostname = "maq1",
@@ -43,11 +42,13 @@ def main():
         tempo_fatia_backoff = 51.2,
         tempo_propagacao = 0.005, #5 microseg/km = 0.005 microseg/m
         eventos_fase_transiente = 1200000,
-        #eventos_fase_transiente = 1200,
         eventos_por_rodada = 400000,
         titulo = u"Cenário 1"
     )
+    return simulador
 
+def main():
+    simulador = init()
     simulador.start()
     simulador.run()
     simulador.gerar_graficos()

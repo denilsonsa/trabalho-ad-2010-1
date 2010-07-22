@@ -7,8 +7,7 @@ reload(simulador)
 from simulador import *
 
 
-def main():
-    # Pequeno teste, com valores quaisquer, escolhidos aleatoriamente
+def init():
     maquinas = [
         Host(
             hostname = "maq1",
@@ -46,7 +45,10 @@ def main():
         eventos_por_rodada = 250000,
         titulo = u"Cenário 2"
     )
+    return simulador
 
+def main():
+    simulador = init()
     simulador.start()
     simulador.run()
     simulador.gerar_graficos()

@@ -46,13 +46,12 @@ class HeapDeEventos(list):
 class Estatisticas(object):
     """Coletor de amostras para geração e plotagem de estatísticas"""
 
-    def __init__(self, label="", titulo=u"Estatísticas"):
+    def __init__(self, titulo=u"Estatísticas"):
         self.amostras = []
         self.intervalos = []
         self.soma_amostras = 0
         self.soma_quadrados = 0
         self.num_amostras = 0
-        self.label = label
         self.titulo = titulo
 
     def adicionar_amostra(self, amostra):
@@ -76,7 +75,7 @@ class Estatisticas(object):
         if len(self.amostras) != len(self.intervalos):
             plot = pyplot.plot(x, self.amostras, *args, **kwargs)
         else:
-            pyplot.errorbar(x, self.amostras, yerr=self.intervalos, label=self.label, *args, **kwargs)
+            pyplot.errorbar(x, self.amostras, yerr=self.intervalos, *args, **kwargs)
 
         #pyplot.title(titulo)
         #pyplot.show()
@@ -178,19 +177,22 @@ class Host(object):
         self.tempo_comeco_envio_mensagem = -1
         self.uso_do_meio = 0
         self.tempo_comeco_ocioso = -100000.0
+
+        # Flag para indicar se o host está enviando algum quadro
         self.enviando = False
+        # Flag para indicar se o host está esperando o tempo do binary backoff
         self.agendado = False
         self.contador_colisoes = 0
 
-        self.tap_global = Estatisticas(label=self.hostname)
-        self.tam_global = Estatisticas(label=self.hostname)
-        self.ncm_global = Estatisticas(label=self.hostname)
-        self.vazao_global = Estatisticas(label=self.hostname)
+        self.tap_global = Estatisticas()
+        self.tam_global = Estatisticas()
+        self.ncm_global = Estatisticas()
+        self.vazao_global = Estatisticas()
 
-        self.tap_global_media = Estatisticas(label=self.hostname)
-        self.tam_global_media = Estatisticas(label=self.hostname)
-        self.ncm_global_media = Estatisticas(label=self.hostname)
-        self.vazao_global_media = Estatisticas(label=self.hostname)
+        self.tap_global_media = Estatisticas()
+        self.tam_global_media = Estatisticas()
+        self.ncm_global_media = Estatisticas()
+        self.vazao_global_media = Estatisticas()
 
         self.reiniciar_estatisticas()
 
@@ -233,9 +235,9 @@ class Host(object):
         #self.tempo_meio_ocupado_total = 0
         #self.tempo_mudanca_estado_meio = 0;
 
-        self.tap_rodada = Estatisticas(label=self.hostname)
-        self.tam_rodada = Estatisticas(label=self.hostname)
-        self.ncm_rodada = Estatisticas(label=self.hostname)
+        self.tap_rodada = Estatisticas()
+        self.tam_rodada = Estatisticas()
+        self.ncm_rodada = Estatisticas()
 
         self.quadros_com_sucesso = 0
 
@@ -261,19 +263,19 @@ class Host(object):
     def tentar_enviar(self, simulador):
         debug_print("tentar_enviar maquina=%s tentativas=%d tco=%f" % (self.hostname, self.tentativas_de_transmissao, self.tempo_comeco_ocioso))
 
-        if len(self.fila) == 0: return #nada a transmitir
+        if len(self.fila) == 0: return # Nada a transmitir
         if self.enviando: return
         if self.agendado: return
 
-        if self.uso_do_meio == 0: #meio livre
-            #binary backoff
+        if self.uso_do_meio == 0: # Meio livre
+            # Binary backoff
             k = self.tentativas_de_transmissao
             if k > 10: k = 10
             tempo_atraso = random.randint(0, (2 ** k) - 1) * simulador.tempo_fatia_backoff
 
             tempo_envio = max(simulador.tempo_agora + tempo_atraso, self.tempo_comeco_ocioso + simulador.tempo_minimo_ocioso)
             if self.tentativas_de_transmissao == 0:
-                #setar tempo de acesso na primeira tentativa somente
+                # Setar tempo de acesso na primeira tentativa somente
                 self.tempo_considerar_envio_quadro = tempo_envio
 
                 if self.proximo_quadro == 0:
@@ -590,11 +592,12 @@ class Simulador(object):
             # Condição de parada:
             # - não estou na fase transiente
             # - e todos os hosts chegaram à precisão desejada
+            # - e a utilização do Ethernet chegou à precisão desejada
             if self.rodada_atual > 0 \
             and all(
                 host.precisao_suficiente()
                 for host in self.hosts if host.ativo
-            ):
+            ) and self.utilizacao_global_media.precisao_suficiente():
                 break
 
             for host in self.hosts:
@@ -656,54 +659,61 @@ class Simulador(object):
         pyplot.subplot(2,3,1)
         for host in self.hosts:
             if host.ativo:
-                host.tap_global_media.plot()
-        exibir_legenda()
+                host.tap_global_media.plot(label=host.hostname)
+        #exibir_legenda()
         pyplot.grid(True)
-        pyplot.title(u"TAp (µs)", fontsize="medium")
+        pyplot.title(u"TAp (tempo médio de acesso de um quadro) (µs)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(2,3,4)
         for host in self.hosts:
             if host.ativo:
-                host.tam_global_media.plot()
-        exibir_legenda()
+                host.tam_global_media.plot(label=host.hostname)
+        #exibir_legenda()
         pyplot.grid(True)
-        pyplot.title(u"TAm (µs)", fontsize="medium")
+        pyplot.title(u"TAm (tempo médio de acesso de uma msg.) (µs)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(2,3,2)
         for host in self.hosts:
             if host.ativo:
-                host.ncm_global_media.plot()
-        exibir_legenda()
+                host.ncm_global_media.plot(label=host.hostname)
+        #exibir_legenda()
         pyplot.grid(True)
-        pyplot.title(u"NCm", fontsize="medium")
+        pyplot.title(u"NCm (núm. médio de colisões por quadro)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(2,3,5)
         for host in self.hosts:
             if host.ativo:
-                host.vazao_global_media.plot()
+                host.vazao_global_media.plot(label=host.hostname)
         exibir_legenda()
         pyplot.grid(True)
-        pyplot.title(u"Vazão (quadros/seg)", fontsize="medium")
+        pyplot.title(u"Vazão média (quadros/segundo)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(2,3,3)
-        self.utilizacao_global_media.plot()
-        self.utilizacao_global.plot(marker="x")
+        self.utilizacao_global_media.plot(label=u"média")
+        self.utilizacao_global.plot(marker="x", label=u"amostras")
+        exibir_legenda()
         pyplot.grid(True)
-        pyplot.title(u"Utilização Ethernet (por rodada)", fontsize="medium")
+        pyplot.title(u"Utilização do Ethernet (por rodada)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
         pyplot.subplot(2,3,6)
         self.utilizacao_total.plot()
+        pyplot.xscale("log", basex=10, subsx=range(0,10,2))
+        pyplot.axvline(self.eventos_fase_transiente/1000, color="red")
+        pyplot.annotate(u"Fim da fase transiente",
+            xy=(self.eventos_fase_transiente/1000, 0.0625), xycoords="data",
+            xytext=(0.95, 0.25), textcoords="figure fraction", size="x-small",
+            arrowprops=dict(arrowstyle="->"),
+            horizontalalignment="right", verticalalignment="bottom")
         pyplot.grid(True)
-        pyplot.title(u"Utilização Ethernet (contínua)", fontsize="medium")
-        pyplot.xlabel(u"eventos / 1000");
+        # pyplot.grid(True, which="both") # which option has been added in matplotlib 1.0.0
+        pyplot.title(u"Utilização do Ethernet (contínua)", fontsize="small")
+        pyplot.xlabel(u"eventos / 1000", fontsize="small");
         #pyplot.xlim([0, self.rodada_atual+1])
 
-        pyplot.suptitle(self.titulo, fontsize="large")
+        pyplot.suptitle(self.titulo, fontsize="large", fontweight="bold")
         pyplot.show()
-
-        #self.utilizacao_global_media.plot()

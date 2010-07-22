@@ -43,11 +43,13 @@ def main():
         tempo_fatia_backoff = 51.2,
         tempo_propagacao = 0.005, #5 microseg/km = 0.005 microseg/m
         eventos_fase_transiente = 5000000,
-        eventos_por_rodada = 250000
+        eventos_por_rodada = 250000,
+        titulo = u"Cenário 2"
     )
 
     simulador.start()
     simulador.run()
+    simulador.gerar_graficos()
 
 if __name__ == "__main__":
     main()

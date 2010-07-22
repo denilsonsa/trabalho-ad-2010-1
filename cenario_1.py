@@ -44,11 +44,13 @@ def main():
         tempo_propagacao = 0.005, #5 microseg/km = 0.005 microseg/m
         eventos_fase_transiente = 1200000,
         #eventos_fase_transiente = 1200,
-        eventos_por_rodada = 100000
+        eventos_por_rodada = 400000,
+        titulo = u"Cenário 1"
     )
 
     simulador.start()
     simulador.run()
+    simulador.gerar_graficos()
 
 if __name__ == "__main__":
     main()

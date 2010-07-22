@@ -46,7 +46,12 @@ def main():
     simulador = init()
     simulador.start()
     simulador.run()
+
+    simulador.gerar_graficos(layout="vertical")
+    simulador.salvar_graficos("cenario_1.png")
+
     simulador.gerar_graficos()
+    simulador.exibir_graficos()
 
 if __name__ == "__main__":
     main()

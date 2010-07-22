@@ -686,6 +686,20 @@ class Simulador(object):
 
             self.rodada_atual += 1
 
+    def exibir_graficos(self):
+        """Exibe na tela os gráficos já gerados."""
+        pyplot.show()
+
+    def salvar_graficos(self, filename, dpi=300, size=(7.4, 10.0)):
+        """Salva em disco os gráficos já gerados. Por padrão, salva a
+        300 DPI no tamanho de uma folha A4 (já desconsiderando as
+        margens)."""
+
+        fig = pyplot.gcf()
+        fig.set_size_inches(size)
+
+        pyplot.savefig(filename, dpi=dpi)
+
     def gerar_graficos(self, layout="horizontal"):
         """Gera os 6 gráficos disponíveis, usando layout "horizontal"
         (para tela) ou "vertical" (para impressão)"""
@@ -714,13 +728,16 @@ class Simulador(object):
         else:
             raise ValueError("Layout desconhecido: '%s'" % layout)
 
+        # Fecha a figura atual (se existir) e cria uma nova
+        pyplot.close()
+        pyplot.figure()
+
         # Desenha os 6 gráficos
         for grafico in graficos:
             pyplot.subplot(rows, cols, grafico[pos_index])
             grafico[-1]()  # Chama a função (último elemento da tupla)
 
         pyplot.suptitle(self.titulo, fontsize="large", fontweight="bold")
-        pyplot.show()
 
     def gerar_grafico_tap(self):
         for host in self.hosts:
@@ -728,8 +745,10 @@ class Simulador(object):
                 host.tap_global_media.plot(label=host.hostname)
         #exibir_legenda()
         pyplot.grid(True)
-        pyplot.title(u"TAp (tempo médio de acesso de um quadro) (µs)", fontsize="small")
+        pyplot.title(u"TAp (µs)\ntempo médio de acesso de um quadro", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xticks(fontsize="x-small")
+        pyplot.yticks(fontsize="x-small")
 
     def gerar_grafico_tam(self):
         for host in self.hosts:
@@ -737,8 +756,10 @@ class Simulador(object):
                 host.tam_global_media.plot(label=host.hostname)
         #exibir_legenda()
         pyplot.grid(True)
-        pyplot.title(u"TAm (tempo médio de acesso de uma msg.) (µs)", fontsize="small")
+        pyplot.title(u"TAm (µs)\ntempo médio de acesso de uma msg.", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xticks(fontsize="x-small")
+        pyplot.yticks(fontsize="x-small")
 
     def gerar_grafico_ncm(self):
         for host in self.hosts:
@@ -746,8 +767,10 @@ class Simulador(object):
                 host.ncm_global_media.plot(label=host.hostname)
         #exibir_legenda()
         pyplot.grid(True)
-        pyplot.title(u"NCm (núm. médio de colisões por quadro)", fontsize="small")
+        pyplot.title(u"NCm\nnúm. médio de colisões por quadro", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xticks(fontsize="x-small")
+        pyplot.yticks(fontsize="x-small")
 
     def gerar_grafico_vazao(self):
         for host in self.hosts:
@@ -757,6 +780,8 @@ class Simulador(object):
         pyplot.grid(True)
         pyplot.title(u"Vazão média (quadros/segundo)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xticks(fontsize="x-small")
+        pyplot.yticks(fontsize="x-small")
 
     def gerar_grafico_utilizacao(self):
         self.utilizacao_global_media.plot(label=u"média")
@@ -765,10 +790,12 @@ class Simulador(object):
         pyplot.grid(True)
         pyplot.title(u"Utilização do Ethernet (por rodada)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
+        pyplot.xticks(fontsize="x-small")
+        pyplot.yticks(fontsize="x-small")
 
     def gerar_grafico_utilizacao_total(self):
         self.utilizacao_total.plot()
-        pyplot.xscale("log", basex=10, subsx=range(0,10,2))
+        pyplot.xscale("log")
         pyplot.axvline(self.eventos_fase_transiente/1000, color="red")
         pyplot.annotate(u"Fim da fase transiente",
             xy=(self.eventos_fase_transiente/1000, 0.0625),
@@ -777,3 +804,5 @@ class Simulador(object):
         # pyplot.grid(True, which="both") # which option has been added in matplotlib 1.0.0
         pyplot.title(u"Utilização do Ethernet (contínua)", fontsize="small")
         pyplot.xlabel(u"eventos / 1000", fontsize="small");
+        pyplot.xticks(fontsize="x-small")
+        pyplot.yticks(fontsize="x-small")

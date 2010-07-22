@@ -7,6 +7,7 @@ import matplotlib.pyplot as pyplot
 import numpy
 import random
 import scipy.stats
+import time
 
 
 ######################################################################
@@ -617,6 +618,8 @@ class Simulador(object):
         print "Fase transiente..."
         self.rodada_atual = 0
 
+        wallclock_comeco_simulacao = time.time()
+
         # Loop que executa todas as rodadas
         while True:
         #for bla in xrange(3):  # DEBUG: Roda só 2 rodadas para testar rapidamente
@@ -632,6 +635,10 @@ class Simulador(object):
             ) and self.utilizacao_global_media.precisao_suficiente():
                 break
 
+            # Wallclock é relógio de parede, e armazena o tempo
+            # decorrido no "mundo real"
+            wallclock_comeco_rodada = time.time()
+
             # Reiniciando estatísticas para a próxima rodada
             for host in self.hosts:
                 host.reiniciar_estatisticas()
@@ -640,6 +647,7 @@ class Simulador(object):
             self.tempo_comeco_rodada = self.tempo_agora
             self.tempo_evento_anterior = self.tempo_agora
 
+            # Quantos eventos devem ser simulados nesta rodada?
             if self.rodada_atual == 0:
                 eventos_nesta_rodada = self.eventos_fase_transiente
             else:
@@ -665,26 +673,34 @@ class Simulador(object):
                 if iteracao % 1000 == 0:
                     self.utilizacao_total.adicionar_amostra(self.tempo_ocupado_total / self.tempo_agora)
 
-            # Adicionar amostras
+            # Coletar e exibir estatísticas
             if self.rodada_atual > 0:
-                self.utilizacao_global.adicionar_amostra(self.tempo_ocupado_rodada / (self.tempo_agora - self.tempo_comeco_rodada))
+                tempo_duracao_da_rodada = self.tempo_agora - self.tempo_comeco_rodada
+
+                # Coletando estatísticas...
+                self.utilizacao_global.adicionar_amostra(self.tempo_ocupado_rodada / tempo_duracao_da_rodada)
                 self.utilizacao_global_media.adicionar_amostra(self.utilizacao_global.media())
                 self.utilizacao_global_media.adicionar_intervalo(self.utilizacao_global.intervalo_de_confianca())
 
+                # Coletando estatísticas...
                 for host in self.hosts:
-                    host.finalizar_rodada(self.tempo_agora - self.tempo_comeco_rodada)
+                    host.finalizar_rodada(tempo_duracao_da_rodada)
 
-                print "Rodada %d" % self.rodada_atual
-                print "- Media da utilizacao Ethernet = %f / IC +- %f" % (self.utilizacao_global.media(), self.utilizacao_global.intervalo_de_confianca())
-                for i in range(4):
-                    if self.hosts[i].chegada != None:
-                        print "- Media do TAp(%d)   = %13f / IC +- %13f" % (i+1, self.hosts[i].tap_global.media(), self.hosts[i].tap_global.intervalo_de_confianca())
-                        print "- Media do TAm(%d)   = %13f / IC +- %13f" % (i+1, self.hosts[i].tam_global.media(), self.hosts[i].tam_global.intervalo_de_confianca())
-                        print "- Media do Ncm(%d)   = %13f / IC +- %13f" % (i+1, self.hosts[i].ncm_global.media(), self.hosts[i].ncm_global.intervalo_de_confianca())
-                        print "- Media da Vazao(%d) = %13f / IC +- %13f" % (i+1, self.hosts[i].vazao_global.media(), self.hosts[i].vazao_global.intervalo_de_confianca())
+                # Calculando o tempo real gasto na simulação
+                wallclock_fim_rodada = time.time()
+                wallclock_duracao_rodada = wallclock_fim_rodada - wallclock_comeco_rodada
+                wallclock_duracao_simulacao = wallclock_fim_rodada - wallclock_comeco_simulacao
 
-
-            #print "Média TAp(1) da rodada %d = %f" % (self.rodada_atual, self.hosts[0].tap_rodada.media())
+                print "Rodada %d" % (self.rodada_atual,)
+                print "-Tempo real: %.2f segundos nesta rodada, %.2f no total" % (wallclock_duracao_rodada, wallclock_duracao_simulacao)
+                print "-Tempo simulado: %.2f microseg nesta rodada, %.2f total" % (tempo_duracao_da_rodada, self.tempo_agora)
+                print "-Media da utilizacao Ethernet = %f | IC +- %f" % (self.utilizacao_global.media(), self.utilizacao_global.intervalo_de_confianca())
+                for i, host in enumerate(self.hosts):
+                    if host.ativo:
+                        print "-Media do TAp(%d)  =%13f | IC +-%13f | %12f na rodada" % (i+1, host.tap_global.media(),   host.tap_global.intervalo_de_confianca(),   host.tap_rodada.media())
+                        print "-Media do TAm(%d)  =%13f | IC +-%13f | %12f na rodada" % (i+1, host.tam_global.media(),   host.tam_global.intervalo_de_confianca(),   host.tam_rodada.media())
+                        print "-Media do Ncm(%d)  =%13f | IC +-%13f | %12f na rodada" % (i+1, host.ncm_global.media(),   host.ncm_global.intervalo_de_confianca(),   host.ncm_rodada.media())
+                        print "-Media da Vazao(%d)=%13f | IC +-%13f | %12f na rodada" % (i+1, host.vazao_global.media(), host.vazao_global.intervalo_de_confianca(), host.vazao_global.amostras[-1])
 
             self.rodada_atual += 1
 
@@ -733,6 +749,9 @@ class Simulador(object):
         # Fecha a figura atual (se existir) e cria uma nova
         pyplot.close()
         pyplot.figure()
+
+        # Ajustando o espaço vertical entre os gráficos
+        pyplot.subplots_adjust(hspace=0.25)
 
         # Desenha os 6 gráficos
         for grafico in graficos:
@@ -806,9 +825,9 @@ class Simulador(object):
             rotation="vertical", size="x-small", ha="right", va="bottom")
 
         # Marcando o fim de cada rodada
-        for rodada in xrange(1,self.rodada_atual):
-            pos_x += self.eventos_por_rodada/1000.0
-            pyplot.axvline(pos_x, color="green")
+        #for rodada in xrange(1,self.rodada_atual):
+        #    pos_x += self.eventos_por_rodada/1000.0
+        #    pyplot.axvline(pos_x, color="green")
 
         pyplot.grid(True)
         # pyplot.grid(True, which="both") # which option has been added in matplotlib 1.0.0

@@ -152,6 +152,7 @@ class Mensagem(object):
 
 
 class Host(object):
+    """Representa uma máquina."""
 
     def __init__(self, hostname, distancia, chegada, num_quadros):
         """Recebe os parâmetros do host:

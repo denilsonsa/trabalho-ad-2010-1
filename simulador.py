@@ -333,6 +333,24 @@ class Host(object):
 
             #tentará enviar o quadro novamente no FimDeEnvio do jam
 
+    def __getstate__(self):
+        """Este método é chamado pelo módulo pickle. Este método remove
+        as closures e funções lambda, permitindo que o pickle consiga
+        salvar este objeto.
+
+        Pickle é um módulo que permite salvar um objeto em um arquivo e
+        carregá-lo novamente mais tarde. Neste simulador, é útil para
+        poder estudar os dados coletados sem precisar reiniciar a
+        simulação.
+
+        Note que não será possível recomeçar a simulação a partir de um
+        host carregado através do pickle."""
+
+        d = self.__dict__.copy()
+        d["chegada"] = None
+        d["num_quadros"] = None
+        return d
+
 
 class Hub(object):
     """Classe que representa um Hub, só serve pra ter um nome e ajudar no Debug"""
@@ -541,23 +559,32 @@ class FimDeRecebimento(Evento):
 class Simulador(object):
     """Classe principal que encapsula um simulador."""
 
-    def __init__(self, hosts, tempo_minimo_ocioso, tempo_transmissao_quadro,
-                              tempo_propagacao, tempo_reforco_jam, tempo_fatia_backoff,
-                              eventos_fase_transiente=50000,
-                              eventos_por_rodada=50000, titulo=u""):
-        """Parâmetros:
-        hosts = Lista de máquinas conectadas ao hub."""
-
+    def __init__(self,
+            hosts,
+            eventos_fase_transiente=50000,
+            eventos_por_rodada=50000,
+            titulo=u"",
+            tempo_minimo_ocioso=9.6,  # Tempo em que o meio tem que ficar ocioso entre transmissões
+            tempo_transmissao_quadro=800,  # 8000 bits/quadro / 10 Mbps = 800microseg/quadro
+            tempo_propagacao=0.005,  # 5 microseg/km = 0.005 microseg/m
+            tempo_reforco_jam=3.2,
+            tempo_fatia_backoff=51.2
+        ):
+        """Recebe todos os parâmetros da simulação."""
         self.hosts = hosts
+        self.eventos_fase_transiente = eventos_fase_transiente
+        self.eventos_por_rodada = eventos_por_rodada
+        self.titulo = titulo
+
         self.tempo_minimo_ocioso = tempo_minimo_ocioso
         self.tempo_transmissao_quadro = tempo_transmissao_quadro
         self.tempo_propagacao = tempo_propagacao
         self.tempo_reforco_jam = tempo_reforco_jam
         self.tempo_fatia_backoff = tempo_fatia_backoff
 
-        self.eventos_fase_transiente = eventos_fase_transiente
-        self.eventos_por_rodada = eventos_por_rodada
-        self.titulo = titulo
+    def start(self):
+        """Prepara o simulador, inicializando algumas variáveis e
+        gerando os eventos iniciais"""
 
         self.utilizacao_global = Estatisticas()
         self.utilizacao_global_media = Estatisticas()
@@ -567,9 +594,6 @@ class Simulador(object):
 
         self.eventos = HeapDeEventos()
         self.tempo_agora = 0
-
-    def start(self):
-        """Inicializa o simulador, gerando os eventos iniciais"""
 
         for host in self.hosts:
             if host.ativo:
@@ -583,7 +607,8 @@ class Simulador(object):
         as estatísticas com a precisão desejada, e então desenha alguns
         gráficos."""
 
-        print "Início da fase transiente..."
+        # Neste simulador, a rodada zero é considerada a fase transiente
+        print "Fase transiente..."
         self.rodada_atual = 0
 
         while True:
@@ -655,8 +680,43 @@ class Simulador(object):
 
             self.rodada_atual += 1
 
-    def gerar_graficos(self):
-        pyplot.subplot(2,3,1)
+    def gerar_graficos(self, layout="horizontal"):
+        """Gera os 6 gráficos disponíveis, usando layout "horizontal"
+        (para tela) ou "vertical" (para impressão)"""
+
+        graficos = [
+            # (pos_h, pos_v, função)
+            # Onde pos_h é a posição do gráfico no layout horizontal,
+            # e pos_v é a posição do gráfico no layout vertical.
+
+            (1, 1, self.gerar_grafico_tap),
+            (4, 2, self.gerar_grafico_tam),
+            (2, 3, self.gerar_grafico_ncm),
+            (5, 4, self.gerar_grafico_vazao),
+            (3, 5, self.gerar_grafico_utilizacao),
+            (6, 6, self.gerar_grafico_utilizacao_total),
+        ]
+
+        if layout == "horizontal":
+            rows = 2
+            cols = 3
+            pos_index = 0
+        elif layout == "vertical":
+            rows = 3
+            cols = 2
+            pos_index = 1
+        else:
+            raise NotImplementedError("Layout desconhecido: '%s'" % layout)
+
+        # Desenha os 6 gráficos
+        for grafico in graficos:
+            pyplot.subplot(rows, cols, grafico[pos_index])
+            grafico[-1]()  # Chama a função (último elemento da tupla)
+
+        pyplot.suptitle(self.titulo, fontsize="large", fontweight="bold")
+        pyplot.show()
+
+    def gerar_grafico_tap(self):
         for host in self.hosts:
             if host.ativo:
                 host.tap_global_media.plot(label=host.hostname)
@@ -665,7 +725,7 @@ class Simulador(object):
         pyplot.title(u"TAp (tempo médio de acesso de um quadro) (µs)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
-        pyplot.subplot(2,3,4)
+    def gerar_grafico_tam(self):
         for host in self.hosts:
             if host.ativo:
                 host.tam_global_media.plot(label=host.hostname)
@@ -674,7 +734,7 @@ class Simulador(object):
         pyplot.title(u"TAm (tempo médio de acesso de uma msg.) (µs)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
-        pyplot.subplot(2,3,2)
+    def gerar_grafico_ncm(self):
         for host in self.hosts:
             if host.ativo:
                 host.ncm_global_media.plot(label=host.hostname)
@@ -683,7 +743,7 @@ class Simulador(object):
         pyplot.title(u"NCm (núm. médio de colisões por quadro)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
-        pyplot.subplot(2,3,5)
+    def gerar_grafico_vazao(self):
         for host in self.hosts:
             if host.ativo:
                 host.vazao_global_media.plot(label=host.hostname)
@@ -692,7 +752,7 @@ class Simulador(object):
         pyplot.title(u"Vazão média (quadros/segundo)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
-        pyplot.subplot(2,3,3)
+    def gerar_grafico_utilizacao(self):
         self.utilizacao_global_media.plot(label=u"média")
         self.utilizacao_global.plot(marker="x", color="#C04040", label=u"amostras")
         exibir_legenda()
@@ -700,7 +760,7 @@ class Simulador(object):
         pyplot.title(u"Utilização do Ethernet (por rodada)", fontsize="small")
         pyplot.xlim([0, self.rodada_atual+1])
 
-        pyplot.subplot(2,3,6)
+    def gerar_grafico_utilizacao_total(self):
         self.utilizacao_total.plot()
         pyplot.xscale("log", basex=10, subsx=range(0,10,2))
         pyplot.axvline(self.eventos_fase_transiente/1000, color="red")
@@ -711,7 +771,3 @@ class Simulador(object):
         # pyplot.grid(True, which="both") # which option has been added in matplotlib 1.0.0
         pyplot.title(u"Utilização do Ethernet (contínua)", fontsize="small")
         pyplot.xlabel(u"eventos / 1000", fontsize="small");
-        #pyplot.xlim([0, self.rodada_atual+1])
-
-        pyplot.suptitle(self.titulo, fontsize="large", fontweight="bold")
-        pyplot.show()

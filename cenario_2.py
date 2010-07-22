@@ -36,13 +36,8 @@ def init():
     ]
     simulador = Simulador(    
         hosts = maquinas,
-        tempo_minimo_ocioso = 9.6,
-        tempo_transmissao_quadro = 800, #8000 bits/quadro / 10 Mbps = 800microseg/quadro
-        tempo_reforco_jam = 3.2,
-        tempo_fatia_backoff = 51.2,
-        tempo_propagacao = 0.005, #5 microseg/km = 0.005 microseg/m
         eventos_fase_transiente = 5000000,
-        eventos_por_rodada = 250000,
+        eventos_por_rodada = 400000,
         titulo = u"Cenário 2"
     )
     return simulador

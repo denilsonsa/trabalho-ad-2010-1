@@ -160,6 +160,7 @@ def teste4():
     return simulador
 
 
+#dez máquinas enviando para a rede, com utilização média de 0,5mbps cada
 def teste5():
     maquinas = [
         Host(

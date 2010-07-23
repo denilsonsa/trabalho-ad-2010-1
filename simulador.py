@@ -578,7 +578,7 @@ class Simulador(object):
             tempo_propagacao=0.005,  # 5 microseg/km = 0.005 microseg/m
             tempo_reforco_jam=3.2,
             tempo_fatia_backoff=51.2,
-            numero_de_rodadas=-1  # Número de rodadas da simulação (-1 para automático)
+            numero_de_rodadas=-1,  # Número de rodadas da simulação (-1 para automático)
             ignorar_backoff = False,
             ignorar_colisao = False
         ):

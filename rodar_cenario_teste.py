@@ -160,11 +160,84 @@ def teste4():
     return simulador
 
 
+#duas máquinas enviando para a rede, sem colisão
+def teste5():
+    maquinas = [
+        Host(
+            hostname = "maq1",
+            distancia = 100,
+            chegada = Deterministica(320 * 1000),
+            num_quadros = 20
+        ),
+        Host(
+            hostname = "maq2",
+            distancia = 80,
+            chegada = Deterministica(320 * 1000),
+            num_quadros = 20
+        ),
+        Host(
+            hostname = "maq3",
+            distancia = 60,
+            chegada = Exponencial(80 * 1000),
+            num_quadros = 5
+        ),
+        Host(
+            hostname = "maq4",
+            distancia = 40,
+            chegada = Exponencial(160 * 1000),
+            num_quadros = 10
+        ),
+        Host(
+            hostname = "maq5",
+            distancia = 30,
+            chegada = Deterministica(80 * 1000),
+            num_quadros = 5
+        ),
+        Host(
+            hostname = "maq6",
+            distancia = 42,
+            chegada = Deterministica(640 * 1000),
+            num_quadros = 40
+        ),
+        Host(
+            hostname = "maq7",
+            distancia = 11,
+            chegada = Exponencial(320 * 1000),
+            num_quadros = 20
+        ),
+        Host(
+            hostname = "maq8",
+            distancia = 70,
+            chegada = Exponencial(160 * 1000),
+            num_quadros = 10
+        ),
+        Host(
+            hostname = "maq9",
+            distancia = 55,
+            chegada = Deterministica(80 * 1000),
+            num_quadros = 5
+        ),
+        Host(
+            hostname = "maq10",
+            distancia = 33,
+            chegada = Exponencial(80 * 1000),
+            num_quadros = 5
+        ),
+    ]
+    simulador = Simulador(    
+        hosts = maquinas,
+        eventos_fase_transiente = 10000000,
+        eventos_por_rodada = 800000,
+        titulo = u"Cenário de teste 5"
+    )
+    return simulador
+
 cenarios = {
     "1": teste1,
     "2": teste2,
     "3": teste3,
     "4": teste4,
+    "5": teste5,
 }
 
 

@@ -9,13 +9,13 @@ import simulador
 reload(simulador)
 from simulador import *
 
-
+#uma máquina sozinha enviando para a rede
 def teste1():
     maquinas = [
         Host(
             hostname = "maq1",
             distancia = 100,
-            chegada = Deterministica(50 * 1000),
+            chegada = Deterministica(40 * 1000),
             num_quadros = 40
         ),
         Host(
@@ -39,16 +39,132 @@ def teste1():
     ]
     simulador = Simulador(    
         hosts = maquinas,
-        eventos_fase_transiente = 1250000,
+        eventos_fase_transiente = 500000,
         eventos_por_rodada = 30000,
         titulo = u"Cenário de teste 1",
         numero_de_rodadas = 10
     )
     return simulador
 
+#uma máquina enviando sozinha para a rede com tempo de chegada o dobro do teste1
+def teste2():
+    maquinas = [
+        Host(
+            hostname = "maq1",
+            distancia = 100,
+            chegada = Deterministica(80 * 1000),
+            num_quadros = 40
+        ),
+        Host(
+            hostname = "maq2",
+            distancia = 80,
+            chegada = None,
+            num_quadros = None
+        ),
+        Host(
+            hostname = "maq3",
+            distancia = 60,
+            chegada = None,
+            num_quadros = None
+        ),
+        Host(
+            hostname = "maq4",
+            distancia = 40,
+            chegada = None,
+            num_quadros = None
+        ),
+    ]
+    simulador = Simulador(    
+        hosts = maquinas,
+        eventos_fase_transiente = 500000,
+        eventos_por_rodada = 30000,
+        titulo = u"Cenário de teste 2",
+        numero_de_rodadas = 10
+    )
+    return simulador
+
+#duas máquinas enviando para rede, sem backoff
+def teste3():
+    maquinas = [
+        Host(
+            hostname = "maq1",
+            distancia = 100,
+            chegada = Deterministica(200 * 1000),
+            num_quadros = 1
+        ),
+        Host(
+            hostname = "maq2",
+            distancia = 80,
+            chegada = Deterministica(200 * 1000),
+            num_quadros = 1
+        ),
+        Host(
+            hostname = "maq3",
+            distancia = 60,
+            chegada = None,
+            num_quadros = None
+        ),
+        Host(
+            hostname = "maq4",
+            distancia = 40,
+            chegada = None,
+            num_quadros = None
+        ),
+    ]
+    simulador = Simulador(    
+        hosts = maquinas,
+        eventos_fase_transiente = 1000,
+        eventos_por_rodada = 1000,
+        titulo = u"Cenário de teste 3",
+        numero_de_rodadas = 10,
+        ignorar_backoff = True
+    )
+    return simulador
+
+#duas máquinas enviando para a rede, sem colisão
+def teste4():
+    maquinas = [
+        Host(
+            hostname = "maq1",
+            distancia = 100,
+            chegada = Deterministica(80 * 1000),
+            num_quadros = 40
+        ),
+        Host(
+            hostname = "maq2",
+            distancia = 80,
+            chegada = Deterministica(80 * 1000),
+            num_quadros = 40
+        ),
+        Host(
+            hostname = "maq3",
+            distancia = 60,
+            chegada = None,
+            num_quadros = None
+        ),
+        Host(
+            hostname = "maq4",
+            distancia = 40,
+            chegada = None,
+            num_quadros = None
+        ),
+    ]
+    simulador = Simulador(    
+        hosts = maquinas,
+        eventos_fase_transiente = 500000,
+        eventos_por_rodada = 30000,
+        titulo = u"Cenário de teste 4",
+        numero_de_rodadas = 10,
+        ignorar_colisao = True
+    )
+    return simulador
+
 
 cenarios = {
-    "1": teste1
+    "1": teste1,
+    "2": teste2,
+    "3": teste3,
+    "4": teste4
 }
 
 

@@ -160,7 +160,6 @@ def teste4():
     return simulador
 
 
-#duas máquinas enviando para a rede, sem colisão
 def teste5():
     maquinas = [
         Host(

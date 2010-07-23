@@ -279,6 +279,8 @@ class Host(object):
             k = self.tentativas_de_transmissao
             if k > 10: k = 10
             tempo_atraso = random.randint(0, (2 ** k) - 1) * simulador.tempo_fatia_backoff
+            if simulador.ignorar_backoff:
+                tempo_atraso = 0
 
             tempo_envio = max(simulador.tempo_agora + tempo_atraso, self.tempo_comeco_ocioso + simulador.tempo_minimo_ocioso)
             if self.tentativas_de_transmissao == 0:
@@ -317,7 +319,7 @@ class Host(object):
 
 
     def checar_jam(self, simulador):
-        if self.uso_do_meio != 0 and self.enviando and not self.fim_de_envio.cancelado: #colisao
+        if not simulador.ignorar_colisao and self.uso_do_meio != 0 and self.enviando and not self.fim_de_envio.cancelado: #colisao
             debug_print("  *** COLISAO DETECTADA ***")
 
             self.contador_colisoes += 1
@@ -576,7 +578,9 @@ class Simulador(object):
             tempo_propagacao=0.005,  # 5 microseg/km = 0.005 microseg/m
             tempo_reforco_jam=3.2,
             tempo_fatia_backoff=51.2,
-            maximo_de_rodadas=-1
+            maximo_de_rodadas=-1,
+            ignorar_backoff = False,
+            ignorar_colisao = False
         ):
         """Recebe todos os parâmetros da simulação."""
         self.hosts = hosts
@@ -590,6 +594,8 @@ class Simulador(object):
         self.tempo_reforco_jam = tempo_reforco_jam
         self.tempo_fatia_backoff = tempo_fatia_backoff
         self.maximo_de_rodadas = maximo_de_rodadas
+        self.ignorar_backoff = ignorar_backoff
+        self.ignorar_colisao = ignorar_colisao
 
     def start(self):
         """Prepara o simulador, inicializando algumas variáveis e

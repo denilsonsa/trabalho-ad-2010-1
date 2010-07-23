@@ -576,8 +576,8 @@ class Simulador(object):
             tempo_reforco_jam=3.2,
             tempo_fatia_backoff=51.2,
             numero_de_rodadas=-1,  # Número de rodadas da simulação (-1 para automático)
-            ignorar_backoff = False,
-            ignorar_colisao = False
+            ignorar_backoff = False,  # Apenas para cenários de teste
+            ignorar_colisao = False   # Apenas para cenários de teste
         ):
         """Recebe todos os parâmetros da simulação."""
         self.hosts = hosts

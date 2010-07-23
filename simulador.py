@@ -578,7 +578,7 @@ class Simulador(object):
             tempo_propagacao=0.005,  # 5 microseg/km = 0.005 microseg/m
             tempo_reforco_jam=3.2,
             tempo_fatia_backoff=51.2,
-            maximo_de_rodadas=-1,
+            numero_de_rodadas=-1  # Número de rodadas da simulação (-1 para automático)
             ignorar_backoff = False,
             ignorar_colisao = False
         ):
@@ -593,7 +593,7 @@ class Simulador(object):
         self.tempo_propagacao = tempo_propagacao
         self.tempo_reforco_jam = tempo_reforco_jam
         self.tempo_fatia_backoff = tempo_fatia_backoff
-        self.maximo_de_rodadas = maximo_de_rodadas
+        self.numero_de_rodadas = numero_de_rodadas
         self.ignorar_backoff = ignorar_backoff
         self.ignorar_colisao = ignorar_colisao
 
@@ -633,19 +633,21 @@ class Simulador(object):
         while True:
         #for bla in xrange(3):  # DEBUG: Roda só 2 rodadas para testar rapidamente
 
-            # Condição de parada:
-            # - não estou na fase transiente
-            # - e todos os hosts chegaram à precisão desejada
-            # - e a utilização do Ethernet chegou à precisão desejada
-            if self.maximo_de_rodadas == -1:
+            # Número de rodadas "automático"
+            if self.numero_de_rodadas < 0:
+                # Condição de parada:
+                # - não estou na fase transiente
+                # - e todos os hosts chegaram à precisão desejada
+                # - e a utilização do Ethernet chegou à precisão desejada
                 if self.rodada_atual > 0 \
                 and all(
                     host.precisao_suficiente()
                     for host in self.hosts if host.ativo
                 ) and self.utilizacao_global_media.precisao_suficiente():
                     break
+            # Número de rodadas "fixo"
             else:
-                if self.rodada_atual > self.maximo_de_rodadas:
+                if self.rodada_atual > self.numero_de_rodadas:
                     break
 
             # Wallclock é relógio de parede, e armazena o tempo

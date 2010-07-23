@@ -1,8 +1,8 @@
 #!/bin/bash
 
-cenarios=`./cenarios_teste.py | sed -n 's/Cen.*veis: *//p'`
+cenarios=`./rodar_cenario_teste.py | sed -n 's/Cen.*veis: *//p'`
 
 for i in $cenarios ; do
 	echo "== Cenario Teste $i =="
-	./cenarios_teste.py $i | tee cenario_teste_$i.txt
+	./rodar_cenario_teste.py $i | tee cenario_teste_$i.txt
 done

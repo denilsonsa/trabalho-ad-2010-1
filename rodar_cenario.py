@@ -190,6 +190,8 @@ def main():
     # Salvando os gráficos num arquivo
     simulador.gerar_graficos(layout="vertical")
     simulador.salvar_graficos(file_prefix + ".png")
+    simulador.salvar_graficos(file_prefix + ".eps")
+    simulador.salvar_graficos(file_prefix + ".svg")
     # Também é possível salvar em formatos .eps, .ps, .svg, .pdf
 
     # Exibindo os gráficos na tela

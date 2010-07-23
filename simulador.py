@@ -97,7 +97,9 @@ class Estatisticas(object):
         sq = self.soma_quadrados
         sa = self.soma_amostras
         n = self.num_amostras
-        return (sq / (n - 1)) - ((sa * sa) / (n * (n - 1)))
+
+        # Usando abs() para evitar resultado -0.0000 devido a erros de ponto flutuante 
+        return abs( (sq / (n - 1)) - ((sa * sa) / (n * (n - 1))) )
 
     def intervalo_de_confianca(self):
         """Retorna metade do tamanho do intervalo de confiança, ou seja,
@@ -111,6 +113,7 @@ class Estatisticas(object):
         # 5% / 2 = 2.5%
         # 1 - 2.5% = 97.5% = 0.975
         t_student_95 = scipy.stats.t.ppf(0.975, self.num_amostras-1)
+
         return t_student_95 * math.sqrt(self.variancia() / self.num_amostras)
 
     def precisao_suficiente(self):
@@ -120,7 +123,7 @@ class Estatisticas(object):
         if self.num_amostras < 2:
             return False
 
-        return 2 * self.intervalo_de_confianca() < self.media() / 10.0
+        return 2 * self.intervalo_de_confianca() <= self.media() / 10.0
 
 
 ######################################################################
@@ -227,10 +230,6 @@ class Host(object):
     def reiniciar_estatisticas(self):
         """Reinicia as estatísticas no início de uma rodada."""
 
-        #self.tempo_meio_ocioso_total = 0
-        #self.tempo_meio_ocupado_total = 0
-        #self.tempo_mudanca_estado_meio = 0;
-
         self.tap_rodada = Estatisticas()
         self.tam_rodada = Estatisticas()
         self.ncm_rodada = Estatisticas()
@@ -306,6 +305,8 @@ class Host(object):
 
     def andar_fila(self, simulador):
         self.proximo_quadro += 1
+
+        # Se é o último quadro desta mensagem
         if self.proximo_quadro == self.fila[0].num_quadros:
             #estatisticas
             if self.fila[0].rodada == simulador.rodada_atual:
@@ -477,10 +478,14 @@ class FimDeEnvio(Evento):
         if not self.sou_jam:
             #debug_print("     TAp = %f" % (self.maquina.tempo_comeco_envio_quadro - self.maquina.tempo_considerar_envio_quadro))
 
-            #coleta estatisticas (se rodada valida)
+            # Coleta estatisticas (se rodada valida)
             if self.rodada == simulador.rodada_atual:
                 self.maquina.tap_rodada.adicionar_amostra(self.maquina.tempo_comeco_envio_quadro - self.maquina.tempo_considerar_envio_quadro)
-                self.maquina.tam_rodada.adicionar_amostra(self.maquina.tempo_comeco_envio_quadro - self.maquina.tempo_considerar_envio_mensagem)
+
+                # Se é o último quadro desta mensagem
+                if self.maquina.proximo_quadro+1 == self.maquina.fila[0].num_quadros:
+                    self.maquina.tam_rodada.adicionar_amostra(self.maquina.tempo_comeco_envio_quadro - self.maquina.tempo_considerar_envio_mensagem)
+
                 self.maquina.quadros_com_sucesso += 1
 
             #reiniciar estado de envio de quadro da máquina
@@ -518,10 +523,6 @@ class InicioDeRecebimento(Evento):
                     InicioDeRecebimento(self.rodada, maquina, self.maquina_origem)
                 )
         else:
-            #coletar tempo ocioso
-            #self.maquina.tempo_meio_ocioso_total += (simulador.tempo_agora - self.maquina.tempo_mudanca_estado_meio)
-            #self.maquina.tempo_mudanca_estado_meio = simulador.tempo_agora
-
             if self.maquina != self.maquina_origem:
                 self.maquina.uso_do_meio += 1
                 self.maquina.checar_jam(simulador)
@@ -549,10 +550,6 @@ class FimDeRecebimento(Evento):
                     FimDeRecebimento(self.rodada, maquina, self.maquina_origem)
                 )
         else:
-            #coletar tempo ocupado
-            #self.maquina.tempo_meio_ocupado_total += (simulador.tempo_agora - self.maquina.tempo_mudanca_estado_meio)
-            #self.maquina.tempo_mudanca_estado_meio = simulador.tempo_agora
-
             if self.maquina != self.maquina_origem:
                 self.maquina.uso_do_meio -= 1
                 if self.maquina.uso_do_meio == 0:
@@ -579,8 +576,8 @@ class Simulador(object):
             tempo_reforco_jam=3.2,
             tempo_fatia_backoff=51.2,
             numero_de_rodadas=-1,  # Número de rodadas da simulação (-1 para automático)
-            ignorar_backoff = False,
-            ignorar_colisao = False
+            ignorar_backoff = False,  # Apenas para cenários de teste
+            ignorar_colisao = False   # Apenas para cenários de teste
         ):
         """Recebe todos os parâmetros da simulação."""
         self.hosts = hosts

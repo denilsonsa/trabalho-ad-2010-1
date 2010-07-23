@@ -147,7 +147,7 @@ def Geometrica(probabilidade):
 # Coisas que encapsulam a interface do Host
 
 class Mensagem(object):
-    """Classe que representa uma mensagem a ser enviada."""
+    """Representa uma mensagem a ser enviada."""
 
     def __init__(self, rodada, num_quadros):
         self.rodada = rodada
@@ -363,7 +363,7 @@ class Host(object):
 
 
 class Hub(object):
-    """Classe que representa um Hub, só serve pra ter um nome e ajudar no Debug"""
+    """Representa um Hub, só serve pra ter um nome e ajudar no Debug."""
 
     def __init__(self):
         self.hostname = "Hub"
@@ -384,7 +384,7 @@ class Evento(object):
 
 
 class ChegouMensagem(Evento):
-    """Classe que representa uma chegada de mensagem da camada superior."""
+    """Representa a chegada de uma mensagem da camada superior."""
 
     def __init__(self, rodada, maquina):
         self.rodada = rodada
@@ -414,7 +414,8 @@ class ChegouMensagem(Evento):
 
 
 class InicioDeEnvio(Evento):
-    """ """
+    """Representa o momento em que uma estação começa a transmitir um
+    quadro."""
 
     def __init__(self, maquina):
         self.maquina = maquina
@@ -451,7 +452,8 @@ class InicioDeEnvio(Evento):
 
 
 class FimDeEnvio(Evento):
-    """ """
+    """Representa o momento em que um quadro ou reforço de jam terminou
+    de ser enviado."""
 
     def __init__(self, rodada, maquina, sou_jam = False):
         self.rodada = rodada
@@ -504,7 +506,8 @@ class FimDeEnvio(Evento):
 
 
 class InicioDeRecebimento(Evento):
-    """ """
+    """Representa o momento em que uma máquina começa a receber um
+    quadro."""
 
     def __init__(self, rodada, maquina, maquina_origem):
         self.rodada = rodada
@@ -531,7 +534,8 @@ class InicioDeRecebimento(Evento):
 
 
 class FimDeRecebimento(Evento):
-    """ """
+    """Representa o momento em que uma máquina termina de receber um
+    quadro."""
 
     def __init__(self, rodada, maquina, maquina_origem):
         self.rodada = rodada
@@ -706,7 +710,7 @@ class Simulador(object):
                 print "Rodada %d" % (self.rodada_atual,)
                 print "-Tempo real: %.2f segundos nesta rodada, %.2f no total" % (wallclock_duracao_rodada, wallclock_duracao_simulacao)
                 print "-Tempo simulado: %.2f microseg nesta rodada, %.2f total" % (tempo_duracao_da_rodada, self.tempo_agora)
-                print "-Media da utilizacao Ethernet = %f | IC +- %f" % (self.utilizacao_global.media(), self.utilizacao_global.intervalo_de_confianca())
+                print "-Media uso Ether  =%13f | IC +-%13f | %12f na rodada" % (self.utilizacao_global.media(), self.utilizacao_global.intervalo_de_confianca(), self.utilizacao_global.amostras[-1])
                 for i, host in enumerate(self.hosts):
                     if host.ativo:
                         print "-Media do TAp(%d)  =%13f | IC +-%13f | %12f na rodada" % (i+1, host.tap_global.media(),   host.tap_global.intervalo_de_confianca(),   host.tap_rodada.media())
